@@ -1,7 +1,10 @@
 # welcome-dashboard
 A minimalistic dashboard for Emacs.
 
-Configuration:
+## How it looks:
+!["Dashboard"](https://github.com/konrad1977/welcome-dashboard/blob/main/screenshots/screenshot_1.png)
+
+## Configuration
 
 ```elisp
 (use-package welcome
