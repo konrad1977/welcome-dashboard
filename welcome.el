@@ -273,7 +273,7 @@
                     (let* ((json-data (buffer-substring-no-properties (point) (point-max)))
                            (json-obj (json-read-from-string json-data))
                            (current-weather (cdr (assoc 'current_weather json-obj)))
-                           (temp (cdr (assoc 'welcome--temperature current-weather)))
+                           (temp (cdr (assoc 'temperature current-weather)))
                            (weather-code (cdr (assoc 'weathercode current-weather)))
                            (weather-icon (all-the-icons-icon-for-weather
                                           (welcome--weather-icon-from-code weather-code))))
