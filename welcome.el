@@ -1,9 +1,19 @@
-;;; welcome.el --- Simple welcome screen -*- lexical-binding: t; -*-
+;;; welcome.el --- Simple welcome screen -*- lexical-binding: t -*-
 
-;;; Commentary:
 ;; Welcome screen
 
-;;; code:
+;; Authod: Mikael Konradsson <mikael.konradsson@outlook.com>
+;; Maintainer: Mikael Konradsson <mikael.konradsson@outlook.com>
+;; Created: 2023
+;; Package-Version: 0.1
+;; Package-Requires: ((emacs "27.1") (compat "29.1.4.1"))
+;; Homepage: https://github.com/konrad1977/welcome-dashboard
+
+;;; Commentary:
+
+;;; Minimalistic dashboard for Emacs.
+
+;; code:
 
 (require 'all-the-icons)
 (require 'async)
@@ -15,12 +25,13 @@
 (defvar welcome-mode nil)
 (defvar welcome-recentfiles '()
   "Recent list.")
-(defvar recent-projects '()
-  "List of recent projects.")
 
-(defvar temperature nil)
-(defvar weatherdescription nil)
-(defvar weathericon nil)
+;; (defvar recent-projects '()
+;;   "List of recent projects.")
+
+(defvar welcome--temperature nil)
+(defvar welcome--weatherdescription nil)
+(defvar welcome--weathericon nil)
 
 (defcustom welcome-title "Quick access [C-number to open file]"
   "Welcome title."
@@ -141,7 +152,7 @@
   "Face for time."
   :group 'welcome)
 
-(defun weather-icon-from-code (code)
+(defun welcome--weather-icon-from-code (code)
   "Maps a weather code to a corresponding string."
   (pcase code
     (`0 "wi-day-sunny")
@@ -158,7 +169,7 @@
     ((or `95 `96 `99) "wi-thunderstorm")
     (_ "Unknown")))
 
-(defun weather-code-to-string (code)
+(defun welcome--weather-code-to-string (code)
   "Maps a weather code to a corresponding string."
   (pcase code
     (`0 "Clear sky")
@@ -201,7 +212,7 @@
     (when (<= 1 index (length files))
       (find-file (nth (1- index) files)))))
 
-(defun welcome:truncate-path-in-middle (path n)
+(defun welcome--truncate-path-in-middle (path n)
   "Truncate the middle of PATH to length N by removing characters and adding an ellipsis."
   (if (<= (length path) n)
       path
@@ -217,7 +228,7 @@
   (recentf-mode)
   (insert "\n")
   (let* ((files welcome-recentfiles)
-         (left-margin (welcome:calculate-padding-left)))
+         (left-margin (welcome--calculate-padding-left)))
     (dolist (file files)
       (let* ((index (cl-position file files :test #'equal))
              (full-path (file-truename file))
@@ -226,15 +237,15 @@
              (file-dir (file-name-directory file))
              (title (format "%s %s%s"
                     (propertize (all-the-icons-icon-for-file file :v-adjust -0.05) 'face '(:family "all-the-icons" :height 1.0))
-                    (propertize (welcome:truncate-path-in-middle file-dir welcome-path-max-length) 'face 'welcome-path-face)
+                    (propertize (welcome--truncate-path-in-middle file-dir welcome-path-max-length) 'face 'welcome-path-face)
                     (propertize file-name 'face 'welcome-filename-face)))
              (title-with-path (propertize title 'path full-path))
              (title-with-path-and-shortcut (concat title-with-path (propertize (format " [%s]" shortcut) 'face '(:height 0.9 :inherit font-lock-constant-face)))))
         (insert (format "%s%s\n" (make-string left-margin ?\s) title-with-path-and-shortcut))))))
 
-(defun welcome:calculate-padding-left ()
+(defun welcome--calculate-padding-left ()
   "Calculate padding for left side."
-  (let* ((max-length (apply 'max (mapcar (lambda (path) (length (welcome:truncate-path-in-middle path welcome-path-max-length))) welcome-recentfiles)))
+  (let* ((max-length (apply 'max (mapcar (lambda (path) (length (welcome--truncate-path-in-middle path welcome-path-max-length))) welcome-recentfiles)))
          (filenames (mapcar (lambda (path) (file-name-nondirectory path)) welcome-recentfiles))
          (max-filename-length (/ (apply 'max (mapcar 'length filenames)) 2))
          (left-margin (max (+ welcome-min-left-padding max-filename-length) (/ (- (window-width) max-length) 2))))
@@ -242,7 +253,7 @@
 
 (defun welcome--insert-text (text)
   "Insert (as TEXT)."
-  (let ((left-margin (welcome:calculate-padding-left)))
+  (let ((left-margin (welcome--calculate-padding-left)))
     (insert (format "%s%s\n" (make-string left-margin ?\s) text))))
 
 (defun welcome--redisplay-buffer-on-resize (&rest _)
@@ -250,7 +261,7 @@
   (when (equal (buffer-name) welcome-buffer)
     (welcome--refresh-screen)))
 
-(defun fetch-weather-data ()
+(defun welcome--fetch-weather-data ()
   "Fetch weather data from API."
   (let ((url-request-method "GET")
         (url-request-extra-headers '(("Content-Type" . "application/json")))
@@ -262,24 +273,16 @@
                     (let* ((json-data (buffer-substring-no-properties (point) (point-max)))
                            (json-obj (json-read-from-string json-data))
                            (current-weather (cdr (assoc 'current_weather json-obj)))
-                           (temp (cdr (assoc 'temperature current-weather)))
+                           (temp (cdr (assoc 'welcome--temperature current-weather)))
                            (weather-code (cdr (assoc 'weathercode current-weather)))
                            (weather-icon (all-the-icons-icon-for-weather
-                                          (weather-icon-from-code weather-code))))
-                      (setq weathericon weather-icon)
-                      (setq temperature (format "%s" temp))
-                      (setq weatherdescription (format "%s" (weather-code-to-string weather-code))))
+                                          (welcome--weather-icon-from-code weather-code))))
+                      (setq welcome--weathericon weather-icon)
+                      (setq welcome--temperature (format "%s" temp))
+                      (setq welcome--weatherdescription (format "%s" (welcome--weather-code-to-string weather-code))))
                     (welcome--refresh-screen))
                   nil
                   t)))
-
-
-;; (defun get-last-projects ()
-;;   "Get a list of the last 3 projects and their recently opened files."
-;;   (let ((projects (projectile-relevant-known-projects)))
-;;     (mapcar (lambda (project)
-;;               (cons (projectile-project-name project)))
-;;             projects)))
 
 ;;;###autoload
 (defun welcome-create-welcome-hook ()
@@ -289,9 +292,9 @@
     (add-hook 'window-size-change-functions 'welcome--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
                                     (welcome--refresh-screen)
-                                    (fetch-weather-data)))))
+                                    (welcome--fetch-weather-data)))))
 
-(defun insert-startup-time ()
+(defun welcome--insert-startup-time ()
   "Insert startup time."
   (welcome--insert-text (format "%s %s %s %s"
                                 (propertize (all-the-icons-octicon "clock")
@@ -302,7 +305,7 @@
                                 (propertize "seconds" 'face 'welcome-text-info-face))))
 
 
-(defun insert-package-info (packages)
+(defun welcome--insert-package-info (packages)
   "Insert package info as (PACKAGES)."
   (welcome--insert-text (format "%s %s %s"
                                 (propertize (all-the-icons-octicon "package")
@@ -311,22 +314,22 @@
                                 (propertize packages 'face 'welcome-info-face)
                                 (propertize "packages loaded" 'face 'welcome-text-info-face))))
 
-(defun insert-weather-info ()
+(defun welcome--insert-weather-info ()
   "Insert weather info."
-  (if weatherdescription
+  (if welcome--weatherdescription
     (welcome--insert-text (format "%s %s, %s%s"
-                                  (propertize weathericon 'face '(:family "Weather icons" :height 1.0) 'display '(raise 0))
-                                  (propertize weatherdescription 'face 'welcome-weather-description-face)
-                                  (propertize temperature 'face 'welcome-weather-temperature-face)
+                                  (propertize welcome--weathericon 'face '(:family "Weather icons" :height 1.0) 'display '(raise 0))
+                                  (propertize welcome--weatherdescription 'face 'welcome-weather-description-face)
+                                  (propertize welcome--temperature 'face 'welcome-weather-temperature-face)
                                   (propertize "℃" 'face 'welcome-text-info-face)))
     (welcome--insert-text (propertize "Loading weather data..." 'face 'welcome-weather-temperature-face))))
 
-(defun insert-recent-projects ()
-  "Insert recent projects."
-  (projectile-mode +1)
-  (setq recent-projects (projectile-relevant-known-projects))
-  (dolist (project (seq-take recent-projects 3))
-    (welcome--insert-text (projectile-project-name project))))
+;; (defun insert-recent-projects ()
+;;   "Insert recent projects."
+;;   (projectile-mode +1)
+;;   (setq recent-projects (projectile-relevant-known-projects))
+;;   (dolist (project (seq-take recent-projects 3))
+;;     (welcome--insert-text (projectile-project-name project))))
 
 (defun welcome--refresh-screen ()
   "Show the welcome screen."
@@ -347,9 +350,9 @@
         (setq cursor-type nil)
         (insert "\n\n")
 
-        (insert-startup-time)
-        (insert-package-info packages)
-        (insert-weather-info)
+        (welcome--insert-startup-time)
+        (welcome--insert-package-info packages)
+        (welcome--insert-weather-info)
 
         ;; (insert "\n")
         ;; (insert-recent-projects)
