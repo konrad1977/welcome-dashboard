@@ -16,9 +16,7 @@
 ;; code:
 
 (require 'all-the-icons)
-(require 'async)
 (require 'json)
-;; (require 'projectile)
 (require 'recentf)
 (require 'url)
 
