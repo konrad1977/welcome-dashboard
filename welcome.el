@@ -20,6 +20,8 @@
 (require 'recentf)
 (require 'url)
 
+;;; Code:
+
 (defvar welcome-mode nil)
 (defvar welcome-recentfiles '()
   "Recent list.")
@@ -162,7 +164,7 @@
   :group 'welcome)
 
 (defun welcome--weather-icon-from-code (code)
-  "Maps a weather code to a corresponding string."
+  "Maps a weather (as CODE) to a corresponding string."
   (pcase code
     (`0 "wi-day-sunny")
     ((or `1 `2 `3) "wi-day-cloudy")
@@ -179,7 +181,7 @@
     (_ "Unknown")))
 
 (defun welcome--weather-code-to-string (code)
-  "Maps a weather code to a corresponding string."
+  "Maps a weather (as CODE) to a corresponding string."
   (pcase code
     (`0 "Clear sky")
     ((or `1 `2 `3) "Partly cloudy")
