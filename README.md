@@ -14,6 +14,7 @@ A minimalistic dashboard for Emacs.
         welcome-longitude 16.2981
         welcome-path-max-length 75
         welcome-min-left-padding 10
+        welcome-show-weather-info t
         welcome-image-file "~/.emacs.d/themes/true.png"
         welcome-image-width 200
         welcome-image-height 169
