@@ -106,7 +106,7 @@
   (use-local-map welcome-mode-map))
 
 (defface welcome-title-face
-  '((t :inherit link :height 1.2))
+  '((t :foreground "#87AAF8" :height 1.2 :weight thin))
   "Face added to code-usage display."
   :group 'welcome)
 
@@ -126,27 +126,38 @@
   :group 'welcome)
 
 (defface welcome-filename-face
-  '((t :inherit default :weight semi-bold :italic nil))
+  '((t :weight semi-bold))
   "Face for the file name."
   :group 'welcome)
 
 (defface welcome-time-face
-  '((t :inherit font-lock-comment-face))
+  '((t :foreground "#a6adc8" :height 0.9 :weight thin))
   "Face for time."
   :group 'welcome)
 
 (defface welcome-weather-description-face
-  '((t :inherit font-lock-constant-face :height 0.9))
+  '((t :foreground "#f9e2af" :height 0.9 :weight thin :bold nil :italic nil))
+  "Face for time."
+  :group 'welcome)
+
+
+(defface welcome-startup-time-face
+  '((t :foreground "#C2A4F8" :height 0.9 :weight thin :bold nil :italic nil))
+  "Face for time."
+  :group 'welcome)
+
+(defface welcome-shortcut-face
+  '((t :foreground "#f9e2af" :height 0.9 :bold t))
   "Face for time."
   :group 'welcome)
 
 (defface welcome-weather-icon-face
-  '((t :inherit default :height 0.9))
+  '((t :height 0.9))
   "Face for time."
   :group 'welcome)
 
 (defface welcome-weather-temperature-face
-  '((t :inherit font-lock-function-name-face :height 0.9))
+  '((t :foreground "#f38ba8" :height 0.9 :weight thin :bold nil :italic nil))
   "Face for time."
   :group 'welcome)
 
@@ -238,7 +249,7 @@
                     (propertize (welcome--truncate-path-in-middle file-dir welcome-path-max-length) 'face 'welcome-path-face)
                     (propertize file-name 'face 'welcome-filename-face)))
              (title-with-path (propertize title 'path full-path))
-             (title-with-path-and-shortcut (concat title-with-path (propertize (format " [%s]" shortcut) 'face '(:height 0.9 :inherit font-lock-constant-face)))))
+             (title-with-path-and-shortcut (concat title-with-path (propertize (format " [%s]" shortcut) 'face 'welcome-shortcut-face))))
         (insert (format "%s%s\n" (make-string left-margin ?\s) title-with-path-and-shortcut))))))
 
 (defun welcome--calculate-padding-left ()
@@ -299,7 +310,7 @@
                                             'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
                                             'display '(raise 0))
                                 (propertize "Startup time:" 'face 'welcome-text-info-face)
-                                (propertize (emacs-init-time "%.2f") 'face 'welcome-info-face)
+                                (propertize (emacs-init-time "%.2f") 'face 'welcome-startup-time-face)
                                 (propertize "seconds" 'face 'welcome-text-info-face))))
 
 
