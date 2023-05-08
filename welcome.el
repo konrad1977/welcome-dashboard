@@ -254,11 +254,13 @@
 
 (defun welcome--calculate-padding-left ()
   "Calculate padding for left side."
-  (let* ((max-length (apply 'max (mapcar (lambda (path) (length (welcome--truncate-path-in-middle path welcome-path-max-length))) welcome-recentfiles)))
-         (filenames (mapcar (lambda (path) (file-name-nondirectory path)) welcome-recentfiles))
+  (if-let* ((files welcome-recentfiles)
+         (max-length (apply 'max (mapcar (lambda (path) (length (welcome--truncate-path-in-middle path welcome-path-max-length))) files)))
+         (filenames (mapcar (lambda (path) (file-name-nondirectory path)) files))
          (max-filename-length (/ (apply 'max (mapcar 'length filenames)) 2))
          (left-margin (max (+ welcome-min-left-padding max-filename-length) (/ (- (window-width) max-length) 2))))
-    (- left-margin max-filename-length)))
+      (- left-margin max-filename-length)
+    welcome-min-left-padding))
 
 (defun welcome--insert-text (text)
   "Insert (as TEXT)."
