@@ -38,6 +38,11 @@
   :group 'welcome
   :type '(string))
 
+(defcustom welcome-show-weather-info t
+  "Show/hide weather info."
+  :group 'welcome
+  :type '(boolean))
+
 (defcustom welcome-min-left-padding 10
   "Minimum left padding when resizing window."
   :group 'welcome
@@ -305,7 +310,8 @@
     (add-hook 'window-size-change-functions 'welcome--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
                                     (welcome--refresh-screen)
-                                    (welcome--fetch-weather-data)))))
+                                    (when welcome-show-weather-info
+                                      (welcome--fetch-weather-data))))))
 
 (defun welcome--insert-startup-time ()
   "Insert startup time."
@@ -329,13 +335,14 @@
 
 (defun welcome--insert-weather-info ()
   "Insert weather info."
-  (if welcome--weatherdescription
-    (welcome--insert-text (format "%s %s, %s%s"
-                                  (propertize welcome--weathericon 'face '(:family "Weather icons" :height 1.0) 'display '(raise 0))
-                                  (propertize welcome--weatherdescription 'face 'welcome-weather-description-face)
-                                  (propertize welcome--temperature 'face 'welcome-weather-temperature-face)
-                                  (propertize "℃" 'face 'welcome-text-info-face)))
-    (welcome--insert-text (propertize "Loading weather data..." 'face 'welcome-weather-temperature-face))))
+  (when welcome-show-weather-info
+    (if welcome--weatherdescription
+        (welcome--insert-text (format "%s %s, %s%s"
+                                      (propertize welcome--weathericon 'face '(:family "Weather icons" :height 1.0) 'display '(raise 0))
+                                      (propertize welcome--weatherdescription 'face 'welcome-weather-description-face)
+                                      (propertize welcome--temperature 'face 'welcome-weather-temperature-face)
+                                      (propertize "℃" 'face 'welcome-text-info-face)))
+      (welcome--insert-text (propertize "Loading weather data..." 'face 'welcome-weather-temperature-face)))))
 
 ;; (defun insert-recent-projects ()
 ;;   "Insert recent projects."
