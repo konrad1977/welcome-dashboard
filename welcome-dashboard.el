@@ -38,11 +38,6 @@
   :group 'welcome-dashboard
   :type '(string))
 
-(defcustom welcome-dashboard-show-weather-info t
-  "Show/hide weather info."
-  :group 'welcome-dashboard
-  :type '(boolean))
-
 (defcustom welcome-dashboard-use-fahrenheit nil
   "Show weather temperature in fahrenheit."
   :group 'welcome-dashboard
@@ -316,7 +311,7 @@
     (add-hook 'window-size-change-functions 'welcome-dashboard--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
                                     (welcome-dashboard--refresh-screen)
-                                    (when welcome-dashboard-show-weather-info
+                                    (when (welcome-dashboard--show-weather-info)
                                       (welcome-dashboard--fetch-weather-data))))))
 
 (defun welcome-dashboard--insert-startup-time ()
@@ -345,9 +340,17 @@
       "℉"
     "℃"))
 
+(defun welcome-dashboard--show-weather-info ()
+  "Check if we latitude and longitude and then show weather info."
+  (let ((latitude welcome-dashboard-latitude)
+        (longitude welcome-dashboard-longitude))
+    (if (and (floatp latitude) (floatp longitude) (> latitude 0.0) (> longitude 0.0))
+        t
+      nil)))
+
 (defun welcome-dashboard--insert-weather-info ()
   "Insert weather info."
-  (when welcome-dashboard-show-weather-info
+  (when (welcome-dashboard--show-weather-info)
     (if welcome-dashboard-weatherdescription
         (welcome-dashboard--insert-text (format "%s %s, %s%s"
                                       (propertize welcome-dashboard-weathericon 'face '(:family "Weather icons" :height 1.0) 'display '(raise 0))
