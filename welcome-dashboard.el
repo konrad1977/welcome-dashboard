@@ -363,6 +363,12 @@
 ;;   (dolist (project (seq-take recent-projects 3))
 ;;     (welcome-dashboard--insert-text (projectile-project-name project))))
 
+(defun welcome-dashboard--package-length ()
+  "Get the number of installed packages."
+  (if (fboundp 'straight--installed-packages)
+      (length straight--installed-packages)
+    (length package-activated-list)))
+
 (defun welcome-dashboard--refresh-screen ()
   "Show the welcome-dashboard screen."
   (setq welcome-dashboard-recentfiles (seq-take recentf-list 9))
@@ -372,7 +378,7 @@
            (size (image-size image))
            (width (car size))
            (left-margin (max welcome-dashboard-min-left-padding (floor (/ (- (window-width) width) 2))))
-           (packages (format "%d" (length package-activated-list))))
+           (packages (format "%d" (welcome-dashboard--package-length))))
       (erase-buffer)
       (goto-char (point-min))
       (let ((inhibit-read-only t))
