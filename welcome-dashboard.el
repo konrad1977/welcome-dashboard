@@ -296,8 +296,8 @@
                                           (welcome-dashboard--weather-icon-from-code weather-code))))
                       (setq welcome-dashboard-weathericon weather-icon)
                       (if welcome-dashboard-use-fahrenheit
-                          (setq welcome-dashboard-temperature (format "%s" (+ (* temp 1.8) 32)))
-                        (setq welcome-dashboard-temperature (format "%s" temp)))
+                          (setq welcome-dashboard-temperature (format "%.1f" (+ (* temp 1.8) 32)))
+                        (setq welcome-dashboard-temperature (format "%.1f" temp)))
                       (setq welcome-dashboard-weatherdescription (format "%s" (welcome-dashboard--weather-code-to-string weather-code))))
                     (welcome-dashboard--refresh-screen))
                   nil
@@ -368,9 +368,14 @@
 
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
-  (if (fboundp 'straight--installed-packages)
-      (length straight--installed-packages)
-    (length package-activated-list)))
+  (cond
+    ((bound-and-true-p package-alist)
+     (length package-activated-list))
+    ((boundp 'straight--profile-cache)
+     (hash-table-count straight--profile-cache))
+    ((boundp 'elpaca--queued)
+     (length elpaca--queued))
+    (t 0)))
 
 (defun welcome-dashboard--refresh-screen ()
   "Show the welcome-dashboard screen."
