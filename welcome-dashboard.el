@@ -43,6 +43,11 @@
   :group 'welcome-dashboard
   :type '(boolean))
 
+(defcustom welcome-dashboard-use-fahrenheit nil
+  "Show weather temperature in fahrenheit."
+  :group 'welcome-dashboard
+  :type '(boolean))
+
 (defcustom welcome-dashboard-min-left-padding 10
   "Minimum left padding when resizing window."
   :group 'welcome-dashboard
@@ -295,7 +300,9 @@
                            (weather-icon (all-the-icons-icon-for-weather
                                           (welcome-dashboard--weather-icon-from-code weather-code))))
                       (setq welcome-dashboard-weathericon weather-icon)
-                      (setq welcome-dashboard-temperature (format "%s" temp))
+                      (if welcome-dashboard-use-fahrenheit
+                          (setq welcome-dashboard-temperature (format "%s" (+ (* temp 1.8) 32)))
+                        (setq welcome-dashboard-temperature (format "%s" temp)))
                       (setq welcome-dashboard-weatherdescription (format "%s" (welcome-dashboard--weather-code-to-string weather-code))))
                     (welcome-dashboard--refresh-screen))
                   nil
@@ -328,9 +335,15 @@
   (welcome-dashboard--insert-text (format "%s %s %s"
                                 (propertize (all-the-icons-octicon "package")
                                             'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
-                                            'display '(raise 0))
-                                (propertize packages 'face 'welcome-dashboard-info-face)
-                                (propertize "packages loaded" 'face 'welcome-dashboard-text-info-face))))
+                                            'display '(raise -0.1))
+                                (propertize packages 'face 'welcome-dashboard-info-face 'display '(raise -0.1))
+                                (propertize "packages loaded" 'face 'welcome-dashboard-text-info-face 'display '(raise -0.1)))))
+
+(defun welcome-dashboard--temperature-symbol ()
+  "Get the correct type of temperature symbol."
+  (if welcome-dashboard-use-fahrenheit
+      "℉"
+    "℃"))
 
 (defun welcome-dashboard--insert-weather-info ()
   "Insert weather info."
@@ -340,7 +353,7 @@
                                       (propertize welcome-dashboard-weathericon 'face '(:family "Weather icons" :height 1.0) 'display '(raise 0))
                                       (propertize welcome-dashboard-weatherdescription 'face 'welcome-dashboard-weather-description-face)
                                       (propertize welcome-dashboard-temperature 'face 'welcome-dashboard-weather-temperature-face)
-                                      (propertize "℃" 'face 'welcome-dashboard-text-info-face)))
+                                      (propertize (welcome-dashboard--temperature-symbol) 'face 'welcome-dashboard-text-info-face)))
       (welcome-dashboard--insert-text (propertize "Loading weather data..." 'face 'welcome-dashboard-weather-temperature-face)))))
 
 ;; (defun insert-recent-projects ()
