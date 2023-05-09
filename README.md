@@ -11,8 +11,7 @@ A minimalistic dashboard for Emacs.
   :ensure nil ;; when using local file and not straight nor use-package
   :config
   (setq welcome-dashboard-latitude 56.7365
-        welcome-dashboard-longitude 16.2981
-        welcome-dashboard-show-weather-info t ;; hide or show weather info.
+        welcome-dashboard-longitude 16.2981 ;; latitude and longitude must be set to show weather information
         welcome-dashboard-path-max-length 75
         welcome-dashboard-use-fahrenheit nil ;; show in celcius or fahrenheit.
         welcome-dashboard-min-left-padding 10
