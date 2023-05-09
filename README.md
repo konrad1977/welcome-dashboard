@@ -14,6 +14,7 @@ A minimalistic dashboard for Emacs.
         welcome-dashboard-longitude 16.2981
         welcome-dashboard-show-weather-info t ;; hide or show weather info.
         welcome-dashboard-path-max-length 75
+        welcome-dashboard-use-fahrenheit nil ;; show in celcius or fahrenheit.
         welcome-dashboard-min-left-padding 10
         welcome-dashboard-image-file "~/.emacs.d/themes/true.png"
         welcome-dashboard-image-width 200
