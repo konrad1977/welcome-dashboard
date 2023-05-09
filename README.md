@@ -7,17 +7,18 @@ A minimalistic dashboard for Emacs.
 ## Configuration
 
 ```elisp
-(use-package welcome
-  :ensure nil
+(use-package welcome-dashboard
+  :ensure nil ;; when using local file and not straight nor use-package
   :config
-  (setq welcome-latitude 56.7365
-        welcome-longitude 16.2981
-        welcome-path-max-length 75
-        welcome-min-left-padding 10
-        welcome-show-weather-info t
-        welcome-image-file "~/.emacs.d/themes/true.png"
-        welcome-image-width 200
-        welcome-image-height 169
-        welcome-title "Welcome Emacser. Have a great day!")
-  (welcome-create-welcome-hook))
+  (setq welcome-dashboard-latitude 56.7365
+        welcome-dashboard-longitude 16.2981
+        welcome-dashboard-show-weather-info t ;; hide or show weather info.
+        welcome-dashboard-path-max-length 75
+        welcome-dashboard-min-left-padding 10
+        welcome-dashboard-image-file "~/.emacs.d/themes/true.png"
+        welcome-dashboard-image-width 200
+        welcome-dashboard-image-height 169
+        welcome-dashboard-title "Welcome Mikael. Have a great day!")
+  (welcome-dashboard-create-welcome-hook))
+  
   ```
