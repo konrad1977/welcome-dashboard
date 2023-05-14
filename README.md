@@ -20,5 +20,8 @@ A minimalistic dashboard for Emacs.
         welcome-dashboard-image-height 169
         welcome-dashboard-title "Welcome Mikael. Have a great day!")
   (welcome-dashboard-create-welcome-hook))
-  
   ```
+  
+  ## Shortcuts
+  C-number opens recent files
+  C-x number opens the todo
