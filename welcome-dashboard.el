@@ -6,7 +6,7 @@
 ;; Maintainer: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Created: 2023
 ;; Package-Version: 0.1
-;; Package-Requires: ((emacs "27.1") (compat "29.1.4.1") ("async.el") ("all-the-icons") ("json.el") ("url.el"))
+;; Package-Requires: ((emacs "27.1") (compat "29.1.4.1"))
 ;; Homepage: https://github.com/konrad1977/welcome-dashboard
 
 ;;; Commentary:
@@ -98,9 +98,14 @@
     ;; Add shortcuts for file indexes
     (dolist (i (number-sequence 1 9))
       (define-key map (kbd (concat "C-" (number-to-string i)))
-        `(lambda ()
-           (interactive)
-           (welcome-dashboard--open-recent-file-at-index ,i))))
+                  `(lambda ()
+                     (interactive)
+                     (welcome-dashboard--open-recent-file-at-index ,i)))
+      (define-key map (kbd (concat "C-x " (number-to-string i)))
+                           `(lambda ()
+                              (interactive)
+                              (welcome-dashboard--open-todos-at-index ,i))))
+
     map)
   "Keymap for `welcome-dashboard-mode'.")
 
@@ -118,7 +123,12 @@
 
 (defface welcome-dashboard-title-face
   '((t :foreground "#87AAF8" :height 1.2 :weight thin))
-  "Face added to code-usage display."
+  "Title face."
+  :group 'welcome-dashboard)
+
+(defface welcome-dashboard-subtitle-face
+  '((t :foreground "#9399b2" :weight semi-bold))
+  "Subtitle face."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-info-face
@@ -148,27 +158,42 @@
 
 (defface welcome-dashboard-weather-description-face
   '((t :foreground "#f9e2af" :height 0.9 :weight thin :bold nil :italic nil))
-  "Face for time."
+  "Face for weather description."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-startup-time-face
   '((t :foreground "#C2A4F8" :height 0.9 :weight thin :bold nil :italic nil))
-  "Face for time."
+  "Face for startup time."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-shortcut-face
   '((t :foreground "#f9e2af" :height 0.9 :bold t))
-  "Face for time."
+  "Face for recent files shortcuts."
+  :group 'welcome-dashboard)
+
+(defface welcome-dashboard-shortcut-todo-face
+  '((t :foreground "#abd47c" :height 0.9 :bold t))
+  "Face for todo shortcuts."
+  :group 'welcome-dashboard)
+
+(defface welcome-dashboard-todo-type-face
+  '((t :foreground "#585b70" :height 0.9 :bold t))
+  "Face for todo shortcuts."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-weather-icon-face
   '((t :height 0.9))
-  "Face for time."
+  "Face for weather icon."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-weather-temperature-face
   '((t :foreground "#f38ba8" :height 0.9 :weight thin :bold nil :italic nil))
-  "Face for time."
+  "Face for temperature."
+  :group 'welcome-dashboard)
+
+(defface welcome-dashboard-project-face
+  '((t :foreground "#f38ba8" :bold t))
+  "Face for project name."
   :group 'welcome-dashboard)
 
 (defun welcome-dashboard--weather-icon-from-code (code)
@@ -230,8 +255,23 @@
     (when (<= 1 index (length files))
       (find-file (nth (1- index) files)))))
 
+(defun welcome-dashboard--open-todos-at-index (index)
+  "Open the todo at INDEX."
+  (interactive "nIndex: ")
+  (let ((todos welcome-dashboard-todos))
+    (when (<= 1 index (length todos))
+      (let* ((todo (nth (1- index) todos))
+             (file (nth 0 todo))
+             (line (string-to-number (nth 1 todo)))
+             (column (string-to-number (nth 2 todo))))
+        (find-file file)
+        (goto-char (point-min))
+        (forward-line (1- line))
+        (forward-char (1- column))))))
+
 (defun welcome-dashboard--truncate-path-in-middle (path n)
-  "Truncate the middle of PATH to length N by removing characters and adding an ellipsis."
+  "Truncate the middle of PATH to length N by removing characters.
+And adding an ellipsis."
   (if (<= (length path) n)
       path
     (let* ((left (/ (- n 3) 2))
@@ -242,7 +282,7 @@
       (concat head ellipsis tail))))
 
 (defun welcome-dashboard--insert-recent-files ()
-  "Insert the first 9 recent files with icons in the welcome-dashboard buffer."
+  "Insert the first x recent files with icons in the welcome-dashboard buffer."
   (recentf-mode)
   (insert "\n")
   (let* ((files welcome-dashboard-recentfiles)
@@ -260,6 +300,30 @@
              (title-with-path (propertize title 'path full-path))
              (title-with-path-and-shortcut (concat title-with-path (propertize (format " [%s]" shortcut) 'face 'welcome-dashboard-shortcut-face))))
         (insert (format "%s%s\n" (make-string left-margin ?\s) title-with-path-and-shortcut))))))
+
+(defun welcome-dashboard--insert-todos ()
+  "Insert todos."
+  (when (> (length welcome-dashboard-todos) 0)
+    (welcome-dashboard--insert-text
+     (format "%s %s %s"
+             (propertize "You got work todo in" 'face 'welcome-dashboard-subtitle-face)
+             (propertize welcome-dashboard-last-project-name 'face 'welcome-dashboard-project-face)
+             (propertize "project" 'face 'welcome-dashboard-subtitle-face)))
+    (dolist (todo welcome-dashboard-todos)
+      (let* ((index (cl-position todo welcome-dashboard-todos :test #'equal))
+             (shortcut (format "%d" (+ index +1)))
+             (path (nth 0 todo))
+             (type (nth 3 todo))
+             (text (nth 4 todo))
+             (title (format "%s %s %s %s"
+                            (propertize (all-the-icons-octicon "alert")
+                                        'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
+                                        'display '(raise 0))
+                            (propertize type 'face 'welcome-dashboard-todo-type-face)
+                            (propertize (string-trim-left (welcome-dashboard--truncate-text-right text)) 'face 'welcome-dashboard-filename-face)
+                            (propertize (format "[%s]" shortcut) 'face 'welcome-dashboard-shortcut-todo-face))))
+        (welcome-dashboard--insert-text
+         (propertize title 'path path))))))
 
 (defun welcome-dashboard--calculate-padding-left ()
   "Calculate padding for left side."
@@ -323,39 +387,6 @@
       (concat (substring text 0 67) "...")
     text))
 
-(defun welcome-dashboard--open-file-at-line-column (properties-string)
-  "Open the file specified in the PROPERTIES-STRING and navigate to the line and column."
-  (let* ((parts (split-string properties-string ":"))
-         (file (car parts))
-         (line (string-to-number (cadr parts)))
-         (column (string-to-number (caddr parts))))
-    (find-file file)
-    (forward-line line)
-    (move-to-column column)))
-
-(defun welcome-dashboard--insert-todos ()
-  "Insert todos."
-  (when (> (length welcome-dashboard-todos) 0)
-    (welcome-dashboard--insert-text
-     (format "%s %s"
-     (propertize "You got work todo in" 'face 'welcome-dashboard-text-info-face)
-     (propertize welcome-dashboard-last-project-name 'face 'welcome-dashboard-startup-time-face)))
-    (dolist (todo welcome-dashboard-todos)
-      (let* ((path (nth 0 todo))
-             (line (nth 1 todo))
-             (column (nth 2 todo))
-             (type (nth 3 todo))
-             (text (nth 4 todo))
-             ;; (fullpath (format "%s:%s:%s" path line column))
-             (fullpath path)
-             (title (format "%s %s %s"
-                            (propertize (all-the-icons-octicon "alert")
-                                        'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
-                                        'display '(raise 0))
-                            (propertize type 'face 'welcome-dashboard-text-info-face)
-                            (propertize (string-trim-left (welcome-dashboard--truncate-text-right text)) 'face 'welcome-dashboard-filename-face))))
-        (welcome-dashboard--insert-text
-         (propertize title 'path fullpath))))))
 
 
 (defun welcome-dashboard--insert-startup-time ()
@@ -404,7 +435,7 @@
       (welcome-dashboard--insert-text (propertize "Loading weather data..." 'face 'welcome-dashboard-weather-temperature-face)))))
 
 (defun welcome-dashboard--parse-todo-result (result)
-  "Parse the TODO result and create a list of TODO items."
+  "Parse the RESULT and create a list of todo items."
   (let ((regex "\\(.+?\\):\\([0-9]+\\):\\([0-9]+\\):\s?\\W+\\(.*\\):\\(.*\\)$"))
     (save-match-data
       (let (matches todos)
@@ -429,20 +460,21 @@ and parse it json and call (as CALLBACK)."
 
 (defun welcome-dashboard--last-root ()
   "Get the version control root directory of the most recent file."
-  (let* ((file (car welcome-dashboard-recentfiles)))
-    (vc-find-root file ".git")))
+  (when (> (length welcome-dashboard-recentfiles) 0)
+    (let ((file (car welcome-dashboard-recentfiles)))
+      (vc-find-root file ".git"))))
 
 (defun welcome-dashboard--fetch-todos ()
   "Fetch todos."
-  (when (executable-find "rg")
+  (when (and (executable-find "rg") (welcome-dashboard--last-root))
     (let* ((root (welcome-dashboard--last-root))
            (projectname (file-name-nondirectory (directory-file-name root)))
-           (command (format "rg -e \"(TODO|FIX|FIXME|PERF):\" --color=never --no-heading --with-filename --line-number --column --sort path %s" root)))
+           (command (format "rg -e \"(TODO|FIX|FIXME|PERF|HACK|NOTE):\s+\" --color=never --no-heading --with-filename --line-number --column --sort path %s" root)))
       (setq welcome-dashboard-last-project-name projectname)
       (welcome-dashboard--async-command-to-string
        :command command
        :callback '(lambda (result)
-                    (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 5))
+                    (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 9))
                     (welcome-dashboard--refresh-screen))))))
 
 ;; TODO: Help me do something
