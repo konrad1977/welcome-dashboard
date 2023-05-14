@@ -6,7 +6,7 @@
 ;; Maintainer: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Created: 2023
 ;; Package-Version: 0.1
-;; Package-Requires: ((emacs "27.1") (compat "29.1.4.1"))
+;; Package-Requires: ((emacs "27.1") (compat "29.1.4.1") ("async.el") ("all-the-icons") ("json.el") ("url.el"))
 ;; Homepage: https://github.com/konrad1977/welcome-dashboard
 
 ;;; Commentary:
@@ -16,9 +16,11 @@
 ;; code:
 
 (require 'all-the-icons)
+(require 'async)
 (require 'json)
 (require 'recentf)
 (require 'url)
+(require 'vc)
 
 ;;; Code:
 
@@ -26,8 +28,10 @@
 (defvar welcome-dashboard-recentfiles '()
   "Recent list.")
 
-;; (defvar recent-projects '()
-;;   "List of recent projects.")
+(defvar welcome-dashboard-todos '()
+  "Todos.")
+
+(defvar welcome-dashboard-last-project-name nil)
 
 (defvar welcome-dashboard-temperature nil)
 (defvar welcome-dashboard-weatherdescription nil)
@@ -215,7 +219,6 @@
          (prop-pos (next-single-property-change line-start 'path nil line-end)))
     (when prop-pos
       (let ((file (get-text-property prop-pos 'path)))
-        (message file)
         (if (file-exists-p file)
             (find-file file)
           (error "File %s does not exist" file))))))
@@ -311,8 +314,49 @@
     (add-hook 'window-size-change-functions 'welcome-dashboard--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
                                     (welcome-dashboard--refresh-screen)
+                                    (welcome-dashboard--fetch-todos)
                                     (when (welcome-dashboard--show-weather-info)
                                       (welcome-dashboard--fetch-weather-data))))))
+(defun welcome-dashboard--truncate-text-right (text)
+  "Truncate TEXT at the right to a maximum of 100 characters."
+  (if (> (length text) 70)
+      (concat (substring text 0 67) "...")
+    text))
+
+(defun welcome-dashboard--open-file-at-line-column (properties-string)
+  "Open the file specified in the PROPERTIES-STRING and navigate to the line and column."
+  (let* ((parts (split-string properties-string ":"))
+         (file (car parts))
+         (line (string-to-number (cadr parts)))
+         (column (string-to-number (caddr parts))))
+    (find-file file)
+    (forward-line line)
+    (move-to-column column)))
+
+(defun welcome-dashboard--insert-todos ()
+  "Insert todos."
+  (when (> (length welcome-dashboard-todos) 0)
+    (welcome-dashboard--insert-text
+     (format "%s %s"
+     (propertize "You got work todo in" 'face 'welcome-dashboard-text-info-face)
+     (propertize welcome-dashboard-last-project-name 'face 'welcome-dashboard-startup-time-face)))
+    (dolist (todo welcome-dashboard-todos)
+      (let* ((path (nth 0 todo))
+             (line (nth 1 todo))
+             (column (nth 2 todo))
+             (type (nth 3 todo))
+             (text (nth 4 todo))
+             ;; (fullpath (format "%s:%s:%s" path line column))
+             (fullpath path)
+             (title (format "%s %s %s"
+                            (propertize (all-the-icons-octicon "alert")
+                                        'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
+                                        'display '(raise 0))
+                            (propertize type 'face 'welcome-dashboard-text-info-face)
+                            (propertize (string-trim-left (welcome-dashboard--truncate-text-right text)) 'face 'welcome-dashboard-filename-face))))
+        (welcome-dashboard--insert-text
+         (propertize title 'path fullpath))))))
+
 
 (defun welcome-dashboard--insert-startup-time ()
   "Insert startup time."
@@ -359,12 +403,49 @@
                                       (propertize (welcome-dashboard--temperature-symbol) 'face 'welcome-dashboard-text-info-face)))
       (welcome-dashboard--insert-text (propertize "Loading weather data..." 'face 'welcome-dashboard-weather-temperature-face)))))
 
-;; (defun insert-recent-projects ()
-;;   "Insert recent projects."
-;;   (projectile-mode +1)
-;;   (setq recent-projects (projectile-relevant-known-projects))
-;;   (dolist (project (seq-take recent-projects 3))
-;;     (welcome-dashboard--insert-text (projectile-project-name project))))
+(defun welcome-dashboard--parse-todo-result (result)
+  "Parse the TODO result and create a list of TODO items."
+  (let ((regex "\\(.+?\\):\\([0-9]+\\):\\([0-9]+\\):\s?\\W+\\(.*\\):\\(.*\\)$"))
+    (save-match-data
+      (let (matches todos)
+        (while (string-match regex result)
+          (setq matches (list (match-string 1 result)
+                              (match-string 2 result)
+                              (match-string 3 result)
+                              (match-string 4 result)
+                              (match-string 5 result)))
+          (setq result (substring result (match-end 0)))
+          (push matches todos))
+        (nreverse todos)))))
+
+(cl-defun welcome-dashboard--async-command-to-string (&key command &key callback)
+  "Async shell command to JSON run async (as COMMAND)
+and parse it json and call (as CALLBACK)."
+  (async-start
+   `(lambda ()
+      (shell-command-to-string ,command))
+   `(lambda (result)
+      (funcall ,callback result))))
+
+(defun welcome-dashboard--last-root ()
+  "Get the version control root directory of the most recent file."
+  (let* ((file (car welcome-dashboard-recentfiles)))
+    (vc-find-root file ".git")))
+
+(defun welcome-dashboard--fetch-todos ()
+  "Fetch todos."
+  (when (executable-find "rg")
+    (let* ((root (welcome-dashboard--last-root))
+           (projectname (file-name-nondirectory (directory-file-name root)))
+           (command (format "rg -e \"(TODO|FIX|FIXME|PERF):\" --color=never --no-heading --with-filename --line-number --column --sort path %s" root)))
+      (setq welcome-dashboard-last-project-name projectname)
+      (welcome-dashboard--async-command-to-string
+       :command command
+       :callback '(lambda (result)
+                    (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 5))
+                    (welcome-dashboard--refresh-screen))))))
+
+;; TODO: Help me do something
 
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
@@ -394,8 +475,12 @@
         (welcome-dashboard--insert-text (propertize welcome-dashboard-title 'face 'welcome-dashboard-title-face))
         (welcome-dashboard--insert-recent-files)
         (setq cursor-type nil)
-        (insert "\n\n")
 
+        (insert "\n")
+        (welcome-dashboard--insert-todos)
+        ;; (welcome-dashboard--insert-text (make-string 60 ?-))
+
+        (insert "\n")
         (welcome-dashboard--insert-startup-time)
         (welcome-dashboard--insert-package-info packages)
         (welcome-dashboard--insert-weather-info)
@@ -405,11 +490,11 @@
         (insert-image image)
         (insert "\n\n")
         (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %H:%M") 'face 'welcome-dashboard-time-face))
+
         (switch-to-buffer welcome-dashboard-buffer)
         (read-only-mode +1)
         (welcome-dashboard-mode)
         (goto-char (point-min))
-
         (forward-line 3)))))
 
 (provide 'welcome-dashboard)
