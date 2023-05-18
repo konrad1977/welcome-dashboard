@@ -5,15 +5,13 @@
 ;; Authod: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Maintainer: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Created: 2023
-;; Package-Version: 0.1
-;; Package-Requires: ((emacs "27.1") (compat "29.1.4.1"))
+;; Version: 0.1
+;; Package-Requires: ((emacs "27.1") (all-the-icons "5.0.0") (async "1.9.7"))
 ;; Homepage: https://github.com/konrad1977/welcome-dashboard
 
 ;;; Commentary:
 
 ;;; Minimalistic dashboard for Emacs.
-
-;; code:
 
 (require 'all-the-icons)
 (require 'async)
@@ -101,6 +99,7 @@
                   `(lambda ()
                      (interactive)
                      (welcome-dashboard--open-recent-file-at-index ,i)))
+
       (define-key map (kbd (concat "C-x " (number-to-string i)))
                            `(lambda ()
                               (interactive)
@@ -202,7 +201,7 @@
     (`0 "wi-day-sunny")
     ((or `1 `2 `3) "wi-day-cloudy")
     ((or `45 `48) "wi-day-fog")
-    ((or `51 `53 `55) "wi-sprinkle")
+    ((or `51 `53 `55) "sleet")
     ((or `56 `57) "wi-snow")
     ((or `61 `63 `65) "wi-day-rain")
     ((or `66 `67) "wi-day-rain-mix")
@@ -328,9 +327,9 @@ And adding an ellipsis."
 (defun welcome-dashboard--calculate-padding-left ()
   "Calculate padding for left side."
   (if-let* ((files welcome-dashboard-recentfiles)
-         (max-length (apply 'max (mapcar (lambda (path) (length (welcome-dashboard--truncate-path-in-middle path welcome-dashboard-path-max-length))) files)))
+         (max-length (apply #'max (mapcar (lambda (path) (length (welcome-dashboard--truncate-path-in-middle path welcome-dashboard-path-max-length))) files)))
          (filenames (mapcar (lambda (path) (file-name-nondirectory path)) files))
-         (max-filename-length (/ (apply 'max (mapcar 'length filenames)) 2))
+         (max-filename-length (/ (apply #'max (mapcar 'length filenames)) 2))
          (left-margin (max (+ welcome-dashboard-min-left-padding max-filename-length) (/ (- (window-width) max-length) 2))))
       (- left-margin max-filename-length)
     welcome-dashboard-min-left-padding))
@@ -374,20 +373,19 @@ And adding an ellipsis."
 (defun welcome-dashboard-create-welcome-hook ()
   "Setup welcome-dashboard screen."
   (when (< (length command-line-args) 2)
-    (add-hook 'switch-to-buffer 'welcome-dashboard--redisplay-buffer-on-resize)
-    (add-hook 'window-size-change-functions 'welcome-dashboard--redisplay-buffer-on-resize)
+    (add-hook 'switch-to-buffer #'welcome-dashboard--redisplay-buffer-on-resize)
+    (add-hook 'window-size-change-functions #'welcome-dashboard--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
                                     (welcome-dashboard--refresh-screen)
                                     (welcome-dashboard--fetch-todos)
                                     (when (welcome-dashboard--show-weather-info)
                                       (welcome-dashboard--fetch-weather-data))))))
+
 (defun welcome-dashboard--truncate-text-right (text)
   "Truncate TEXT at the right to a maximum of 100 characters."
   (if (> (length text) 70)
       (concat (substring text 0 67) "...")
     text))
-
-
 
 (defun welcome-dashboard--insert-startup-time ()
   "Insert startup time."
@@ -474,10 +472,8 @@ and parse it json and call (as CALLBACK)."
       (welcome-dashboard--async-command-to-string
        :command command
        :callback '(lambda (result)
-                    (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 9))
-                    (welcome-dashboard--refresh-screen))))))
-
-;; TODO: Help me do something
+                     (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 9))
+                     (welcome-dashboard--refresh-screen))))))
 
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
@@ -521,7 +517,7 @@ and parse it json and call (as CALLBACK)."
         (insert (make-string left-margin ?\ ))
         (insert-image image)
         (insert "\n\n")
-        (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %H:%M") 'face 'welcome-dashboard-time-face))
+        (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %R") 'face 'welcome-dashboard-time-face))
 
         (switch-to-buffer welcome-dashboard-buffer)
         (read-only-mode +1)
