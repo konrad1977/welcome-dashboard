@@ -471,9 +471,9 @@ and parse it json and call (as CALLBACK)."
       (setq welcome-dashboard-last-project-name projectname)
       (welcome-dashboard--async-command-to-string
        :command command
-       :callback '(lambda (result)
-                     (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 9))
-                     (welcome-dashboard--refresh-screen))))))
+       :callback `(lambda (result)
+                    (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 9))
+                    (welcome-dashboard--refresh-screen))))))
 
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
