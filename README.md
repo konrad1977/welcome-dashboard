@@ -12,6 +12,7 @@ A minimalistic dashboard for Emacs.
   :config
   (setq welcome-dashboard-latitude 56.7365
         welcome-dashboard-longitude 16.2981 ;; latitude and longitude must be set to show weather information
+        welcome-dashboard-use-nerd-icons t ;; Use nerd icons instead of all-the-icons
         welcome-dashboard-path-max-length 75
         welcome-dashboard-use-fahrenheit nil ;; show in celcius or fahrenheit.
         welcome-dashboard-min-left-padding 10

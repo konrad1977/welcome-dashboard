@@ -33,7 +33,7 @@
 (defvar welcome-dashboard-temperature nil)
 (defvar welcome-dashboard-weatherdescription nil)
 (defvar welcome-dashboard-weathericon nil)
-(defvar welcome-dashboard-use-nerd-icons t)
+(defvar welcome-dashboard-use-nerd-icons nil)
 
 (defcustom welcome-dashboard-title "Quick access [C-number to open file]"
   "Welcome-dashboard title."
