@@ -4,9 +4,10 @@
 
 ;; Authod: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Maintainer: Mikael Konradsson <mikael.konradsson@outlook.com>
+;; Keywords: dashboard
 ;; Created: 2023
 ;; Version: 0.1
-;; Package-Requires: ((emacs "27.1") (all-the-icons "5.0.0") (async "1.9.7"))
+;; Package-Requires: ((emacs "27.1") (all-the-icons "5.0.0") (async "1.9.7") (nerd-icons "0.0.1"))
 ;; Homepage: https://github.com/konrad1977/welcome-dashboard
 
 ;;; Commentary:
