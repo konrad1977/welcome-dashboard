@@ -21,6 +21,7 @@
 (require 'vc)
 (require 'nerd-icons)
 (require 'all-the-icons)
+(require 'package)
 
 ;;; Code:
 
