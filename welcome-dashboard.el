@@ -19,6 +19,8 @@
 (require 'recentf)
 (require 'url)
 (require 'vc)
+(require 'nerd-icons)
+(require 'all-the-icons)
 
 ;;; Code:
 
@@ -120,10 +122,6 @@
   (setq-local mode-line-format nil)
   (setq-local global-hl-line-mode nil)
 
-  (if welcome-dashboard-use-nerd-icons
-      (require 'nerd-icons)
-    (require 'all-the-icons))
-  
   (use-local-map welcome-dashboard-mode-map))
 
 (defface welcome-dashboard-title-face
@@ -369,7 +367,7 @@ And adding an ellipsis."
   (if-let* ((files welcome-dashboard-recentfiles)
          (max-length (apply #'max (mapcar (lambda (path) (length (welcome-dashboard--truncate-path-in-middle path welcome-dashboard-path-max-length))) files)))
          (filenames (mapcar (lambda (path) (file-name-nondirectory path)) files))
-         (max-filename-length (/ (apply #'max (mapcar 'length filenames)) 2))
+         (max-filename-length (/ (apply #'max (mapcar #'length filenames)) 2))
          (left-margin (max (+ welcome-dashboard-min-left-padding max-filename-length) (/ (- (window-width) max-length) 2))))
       (- left-margin max-filename-length)
     welcome-dashboard-min-left-padding))
