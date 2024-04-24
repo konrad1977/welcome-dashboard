@@ -308,7 +308,9 @@ And adding an ellipsis."
   "Get the icon for (FILE)."
   (if welcome-dashboard-use-nerd-icons
       (progn
-       (propertize (nerd-icons-icon-for-file file)))
+       (propertize (cond ((not (file-exists-p file)) (nerd-icons-mdicon "nf-md-alert_remove" :face '(:inherit nerd-icons-orange)))
+                         ((file-directory-p file) (nerd-icons-icon-for-dir file))
+                         (t (nerd-icons-icon-for-file file)))))
     (propertize (all-the-icons-icon-for-file file :v-adjust -0.05) 'face '(:family "all-the-icons" :height 1.0))))
 
 (defun welcome-dashboard--insert-recent-files ()
