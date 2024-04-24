@@ -59,6 +59,11 @@
   :group 'welcome-dashboard
   :type '(natnum))
 
+(defcustom welcome-dashboard-max-number-of-todos 5
+  "Maximum number of todos to show."
+  :group 'welcome-dashboard
+  :type '(natnum))
+
 (defcustom welcome-dashboard-latitude nil
   "Latitude for weather information."
   :group 'welcome-dashboard
@@ -418,10 +423,9 @@ And adding an ellipsis."
     (add-hook 'window-size-change-functions #'welcome-dashboard--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
                                     (welcome-dashboard--refresh-screen)
-                                    (when (welcome-dashbord--isActive)
-                                      (welcome-dashboard--fetch-todos)
+                                    (welcome-dashboard--fetch-todos)
                                       (when (welcome-dashboard--show-weather-info)
-                                        (welcome-dashboard--fetch-weather-data)))))))
+                                        (welcome-dashboard--fetch-weather-data))))))
 
 (defun welcome-dashboard--truncate-text-right (text)
   "Truncate TEXT at the right to a maximum of 100 characters."
@@ -529,8 +533,9 @@ and parse it json and call (as CALLBACK)."
       (welcome-dashboard--async-command-to-string
        :command command
        :callback `(lambda (result)
-                    (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 9))
-                      (welcome-dashboard--refresh-screen))))))
+                    (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) welcome-dashboard-max-number-of-todos))
+                    (when (welcome-dashbord--isActive)
+                      (welcome-dashboard--refresh-screen)))))))
 
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
