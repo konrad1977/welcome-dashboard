@@ -410,7 +410,7 @@ And adding an ellipsis."
                           (setq welcome-dashboard-temperature (format "%.1f" (+ (* temp 1.8) 32)))
                         (setq welcome-dashboard-temperature (format "%.1f" temp)))
                       (setq welcome-dashboard-weatherdescription (format "%s" (welcome-dashboard--weather-code-to-string weather-code))))
-                    (when (welcome-dashbord--isActive)
+                    (when (welcome-dashboard--isActive)
                       (welcome-dashboard--refresh-screen)))
                   nil
                   t)))
@@ -535,7 +535,7 @@ and parse it json and call (as CALLBACK)."
        :command command
        :callback `(lambda (result)
                     (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) welcome-dashboard-max-number-of-todos))
-                    (when (welcome-dashbord--isActive)
+                    (when (welcome-dashboard--isActive)
                       (welcome-dashboard--refresh-screen))))))))
 
 (defun welcome-dashboard--package-length ()
@@ -549,7 +549,7 @@ and parse it json and call (as CALLBACK)."
      (length elpaca--queued))
     (t 0)))
 
-(defun welcome-dashbord--isActive ()
+(defun welcome-dashboard--isActive ()
   "Check if buffer is active and visible."
   (or (eq welcome-dashboard-buffer (window-buffer (selected-window)))
      (get-buffer-window welcome-dashboard-buffer 'visible)))
@@ -589,7 +589,8 @@ and parse it json and call (as CALLBACK)."
         (insert "\n\n")
         (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %R") 'face 'welcome-dashboard-time-face))
 
-        (switch-to-buffer welcome-dashboard-buffer)
+        (when (not (welcome-dashboard--isActive))
+          (switch-to-buffer welcome-dashboard-buffer))
         (welcome-dashboard-mode)
         (goto-char (point-min))
         (forward-line 3)))))
