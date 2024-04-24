@@ -525,6 +525,7 @@ and parse it json and call (as CALLBACK)."
 
 (defun welcome-dashboard--fetch-todos ()
   "Fetch todos."
+  (when (> welcome-dashboard-max-number-of-todos 0)
   (when (and (executable-find "rg") (welcome-dashboard--last-root))
     (let* ((root (welcome-dashboard--last-root))
            (projectname (file-name-nondirectory (directory-file-name root)))
@@ -535,7 +536,7 @@ and parse it json and call (as CALLBACK)."
        :callback `(lambda (result)
                     (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) welcome-dashboard-max-number-of-todos))
                     (when (welcome-dashbord--isActive)
-                      (welcome-dashboard--refresh-screen)))))))
+                      (welcome-dashboard--refresh-screen))))))))
 
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
@@ -571,14 +572,16 @@ and parse it json and call (as CALLBACK)."
         (welcome-dashboard--insert-recent-files)
         (setq cursor-type nil)
 
-        (insert "\n")
-        (welcome-dashboard--insert-todos)
-        ;; (welcome-dashboard--insert-text (make-string 60 ?-))
+        (when (> (length welcome-dashboard-todos) 0)
+          (insert "\n")
+          (welcome-dashboard--insert-todos))
 
         (insert "\n")
         (welcome-dashboard--insert-startup-time)
         (welcome-dashboard--insert-package-info packages)
-        (welcome-dashboard--insert-weather-info)
+
+        (when (welcome-dashboard--show-weather-info)
+          (welcome-dashboard--insert-weather-info))
 
         (insert "\n\n")
         (insert (make-string left-margin ?\ ))
