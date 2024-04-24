@@ -122,7 +122,7 @@
   (setq-local truncate-lines t)
   (setq-local mode-line-format nil)
   (setq-local global-hl-line-mode nil)
-
+  (setq-local buffer-read-only t)
   (use-local-map welcome-dashboard-mode-map))
 
 (defface welcome-dashboard-title-face
@@ -131,7 +131,7 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-subtitle-face
-  '((t :foreground "#9399b2" :weight semi-bold))
+  '((t :foreground "#9399b2"))
   "Subtitle face."
   :group 'welcome-dashboard)
 
@@ -151,7 +151,7 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-filename-face
-  '((t :weight semi-bold))
+  '((t :foreground "#ADB5D9" :weight semi-bold))
   "Face for the file name."
   :group 'welcome-dashboard)
 
@@ -403,7 +403,8 @@ And adding an ellipsis."
                           (setq welcome-dashboard-temperature (format "%.1f" (+ (* temp 1.8) 32)))
                         (setq welcome-dashboard-temperature (format "%.1f" temp)))
                       (setq welcome-dashboard-weatherdescription (format "%s" (welcome-dashboard--weather-code-to-string weather-code))))
-                    (welcome-dashboard--refresh-screen))
+                    (when (welcome-dashbord--isActive)
+                      (welcome-dashboard--refresh-screen)))
                   nil
                   t)))
 
@@ -415,9 +416,10 @@ And adding an ellipsis."
     (add-hook 'window-size-change-functions #'welcome-dashboard--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
                                     (welcome-dashboard--refresh-screen)
-                                    (welcome-dashboard--fetch-todos)
-                                    (when (welcome-dashboard--show-weather-info)
-                                      (welcome-dashboard--fetch-weather-data))))))
+                                    (when (welcome-dashbord--isActive)
+                                      (welcome-dashboard--fetch-todos)
+                                      (when (welcome-dashboard--show-weather-info)
+                                        (welcome-dashboard--fetch-weather-data)))))))
 
 (defun welcome-dashboard--truncate-text-right (text)
   "Truncate TEXT at the right to a maximum of 100 characters."
@@ -526,7 +528,7 @@ and parse it json and call (as CALLBACK)."
        :command command
        :callback `(lambda (result)
                     (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) 9))
-                    (welcome-dashboard--refresh-screen))))))
+                      (welcome-dashboard--refresh-screen))))))
 
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
@@ -538,6 +540,11 @@ and parse it json and call (as CALLBACK)."
     ((boundp 'elpaca--queued)
      (length elpaca--queued))
     (t 0)))
+
+(defun welcome-dashbord--isActive ()
+  "Check if buffer is active and visible."
+  (or (eq welcome-dashboard-buffer (window-buffer (selected-window)))
+     (get-buffer-window welcome-dashboard-buffer 'visible)))
 
 (defun welcome-dashboard--refresh-screen ()
   "Show the welcome-dashboard screen."
@@ -573,7 +580,6 @@ and parse it json and call (as CALLBACK)."
         (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %R") 'face 'welcome-dashboard-time-face))
 
         (switch-to-buffer welcome-dashboard-buffer)
-        (read-only-mode +1)
         (welcome-dashboard-mode)
         (goto-char (point-min))
         (forward-line 3)))))
