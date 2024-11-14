@@ -96,6 +96,15 @@
 (defconst welcome-dashboard-buffer "*welcome*"
   "Welcome-dashboard buffer name.")
 
+(defvar welcome-dashboard--file-icon-cache (make-hash-table :test 'equal)
+  "Cache for file icons.")
+
+(defvar welcome-dashboard--padding-cache nil
+  "Cache for padding.")
+
+(defvar welcome-dashboard--last-window-width nil
+  "Last window width.")
+
 (defvar welcome-dashboard-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'welcome-dashboard--open-recent-file)
@@ -131,7 +140,7 @@
   (use-local-map welcome-dashboard-mode-map))
 
 (defface welcome-dashboard-title-face
-  '((t :foreground "#87AAF8" :height 1.2 :weight thin))
+  '((t :inherit font-lock-keyword-face :height 1.2 :weight thin))
   "Title face."
   :group 'welcome-dashboard)
 
@@ -141,22 +150,22 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-info-face
-  '((t :foreground "#F66D86" :height 0.9 :bold t :italic t))
+  '((t :inherit font-lock-function-name-face :height 0.9 :bold t :italic t))
   "Face added to code-usage display."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-text-info-face
-  '((t :foreground "#ADB5D0" :height 0.9 :bold nil))
+  '((t :inherit default :height 0.9 :bold nil))
   "Face added to code-usage display."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-path-face
-  '((t :foreground "#63677D" :height 0.9 :weight thin :bold nil :italic nil))
+  '((t :inherit font-lock-builtin-face :height 0.9 :weight thin :bold nil :italic nil))
   "Face for the file path."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-filename-face
-  '((t :foreground "#ADB5D9" :weight semi-bold))
+  '((t :inherit default :weight semi-bold))
   "Face for the file name."
   :group 'welcome-dashboard)
 
@@ -176,7 +185,7 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-shortcut-face
-  '((t :foreground "#f9e2af" :height 0.9 :bold t))
+  '((t :inherit font-lock-constant-face :height 0.9 :bold t))
   "Face for recent files shortcuts."
   :group 'welcome-dashboard)
 
@@ -311,17 +320,20 @@ And adding an ellipsis."
 
 (defun welcome-dashboard--file-icon (file)
   "Get the icon for (FILE)."
-  (if welcome-dashboard-use-nerd-icons
-      (progn
-       (propertize (cond ((not (file-exists-p file)) (nerd-icons-mdicon "nf-md-alert_remove" :face '(:inherit nerd-icons-orange)))
-                         ((file-directory-p file) (nerd-icons-icon-for-dir file))
-                         (t (nerd-icons-icon-for-file file)))))
-    (propertize (all-the-icons-icon-for-file file :v-adjust -0.05) 'face '(:family "all-the-icons" :height 1.0))))
+  (or (gethash file welcome-dashboard--file-icon-cache)
+      (puthash file
+               (if welcome-dashboard-use-nerd-icons
+                   (propertize (cond ((not (file-exists-p file)) (nerd-icons-mdicon "nf-md-alert_remove" :face '(:inherit nerd-icons-orange)))
+                                    ((file-directory-p file) (nerd-icons-icon-for-dir file))
+                                    (t (nerd-icons-icon-for-file file))))
+                 (propertize (all-the-icons-icon-for-file file :v-adjust -0.05) 'face '(:family "all-the-icons" :height 1.0)))
+               welcome-dashboard--file-icon-cache)))
 
 (defun welcome-dashboard--insert-recent-files ()
   "Insert the first x recent files with icons in the welcome-dashboard buffer."
   (recentf-mode)
   (insert "\n")
+  (setq welcome-dashboard-recentfiles (seq-take recentf-list 9))
   (let* ((files welcome-dashboard-recentfiles)
          (left-margin (welcome-dashboard--calculate-padding-left)))
     (dolist (file files)
@@ -352,10 +364,9 @@ And adding an ellipsis."
   "Insert todos."
   (when (> (length welcome-dashboard-todos) 0)
     (welcome-dashboard--insert-text
-     (format "%s %s %s"
+     (format "%s %s!"
              (propertize "You got work todo in" 'face 'welcome-dashboard-subtitle-face)
-             (propertize welcome-dashboard-last-project-name 'face 'welcome-dashboard-project-face)
-             (propertize "project" 'face 'welcome-dashboard-subtitle-face)))
+             (propertize welcome-dashboard-last-project-name 'face 'welcome-dashboard-project-face)))
     (dolist (todo welcome-dashboard-todos)
       (let* ((index (cl-position todo welcome-dashboard-todos :test #'equal))
              (shortcut (format "%d" (+ index +1)))
@@ -372,13 +383,22 @@ And adding an ellipsis."
 
 (defun welcome-dashboard--calculate-padding-left ()
   "Calculate padding for left side."
-  (if-let* ((files welcome-dashboard-recentfiles)
-         (max-length (apply #'max (mapcar (lambda (path) (length (welcome-dashboard--truncate-path-in-middle path welcome-dashboard-path-max-length))) files)))
-         (filenames (mapcar (lambda (path) (file-name-nondirectory path)) files))
-         (max-filename-length (/ (apply #'max (mapcar #'length filenames)) 2))
-         (left-margin (max (+ welcome-dashboard-min-left-padding max-filename-length) (/ (- (window-width) max-length) 2))))
-      (- left-margin max-filename-length)
-    welcome-dashboard-min-left-padding))
+  (let ((current-width (window-width)))
+    (when (or (null welcome-dashboard--padding-cache)
+              (not (eq current-width welcome-dashboard--last-window-width)))
+      (setq welcome-dashboard--last-window-width current-width)
+      (setq welcome-dashboard--padding-cache
+            (if-let* ((files welcome-dashboard-recentfiles)
+                      (max-length (apply #'max (mapcar (lambda (path)
+                                                       (length (welcome-dashboard--truncate-path-in-middle path welcome-dashboard-path-max-length)))
+                                                     files)))
+                      (filenames (mapcar (lambda (path) (file-name-nondirectory path)) files))
+                      (max-filename-length (/ (apply #'max (mapcar #'length filenames)) 2))
+                      (left-margin (max (+ welcome-dashboard-min-left-padding max-filename-length)
+                                      (/ (- current-width max-length) 2))))
+                (- left-margin max-filename-length)
+              welcome-dashboard-min-left-padding)))
+    welcome-dashboard--padding-cache))
 
 (defun welcome-dashboard--insert-text (text)
   "Insert (as TEXT)."
@@ -390,11 +410,12 @@ And adding an ellipsis."
   (when (equal (buffer-name) welcome-dashboard-buffer)
     (welcome-dashboard--refresh-screen)))
 
-(defun welcome-dashboard--fetch-weather-data ()
-  "Fetch weather data from API."
+(defun welcome-dashboard--fetch-weather-data (&optional initial)
+  "Fetch weather data from API. INITIAL indicates if this is the first fetch."
   (let ((url-request-method "GET")
         (url-request-extra-headers '(("Content-Type" . "application/json")))
-        (url (format "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current_weather=true" welcome-dashboard-latitude welcome-dashboard-longitude)))
+        (url (format "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current_weather=true"
+                    welcome-dashboard-latitude welcome-dashboard-longitude)))
     (url-retrieve url
                   (lambda (_)
                     (goto-char (point-min))
@@ -409,23 +430,34 @@ And adding an ellipsis."
                       (if welcome-dashboard-use-fahrenheit
                           (setq welcome-dashboard-temperature (format "%.1f" (+ (* temp 1.8) 32)))
                         (setq welcome-dashboard-temperature (format "%.1f" temp)))
-                      (setq welcome-dashboard-weatherdescription (format "%s" (welcome-dashboard--weather-code-to-string weather-code))))
-                    (when (welcome-dashboard--isActive)
-                      (welcome-dashboard--refresh-screen)))
+                      (setq welcome-dashboard-weatherdescription
+                            (format "%s" (welcome-dashboard--weather-code-to-string weather-code)))
+                      ;; Only set up the recurring timer after initial fetch
+                      (when initial
+                        (run-with-timer 900 900 #'welcome-dashboard--fetch-weather-data))
+                      (when (welcome-dashboard--isActive)
+                        (welcome-dashboard--refresh-screen))))
                   nil
                   t)))
 
-;;;###autoload
+
 (defun welcome-dashboard-create-welcome-hook ()
   "Setup welcome-dashboard screen."
   (when (< (length command-line-args) 2)
-    (add-hook 'switch-to-buffer #'welcome-dashboard--redisplay-buffer-on-resize)
-    (add-hook 'window-size-change-functions #'welcome-dashboard--redisplay-buffer-on-resize)
+    (remove-hook 'switch-to-buffer #'welcome-dashboard--redisplay-buffer-on-resize)
+    (add-hook 'window-configuration-change-hook #'welcome-dashboard--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
-                                    (welcome-dashboard--refresh-screen)
-                                    (welcome-dashboard--fetch-todos)
-                                      (when (welcome-dashboard--show-weather-info)
-                                        (welcome-dashboard--fetch-weather-data))))))
+                                   (welcome-dashboard--refresh-screen)
+                                   (run-with-idle-timer 0.1 nil #'welcome-dashboard--fetch-todos t)
+                                   (when (welcome-dashboard--show-weather-info)
+                                     (run-with-idle-timer 0.1 nil #'welcome-dashboard--fetch-weather-data t))))))
+
+(defun welcome-dashboard-initialize ()
+  "Initialized dashboard."
+  (swith-to-buffer welcome-dashboard-buffer)
+  (goto-char (point-min))
+  (redisplay)
+  (run-hooks 'welcome-dashboard-create-welcome-hook))
 
 (defun welcome-dashboard--truncate-text-right (text)
   "Truncate TEXT at the right to a maximum of 100 characters."
@@ -523,20 +555,26 @@ and parse it json and call (as CALLBACK)."
     (let ((file (car welcome-dashboard-recentfiles)))
       (vc-find-root file ".git"))))
 
-(defun welcome-dashboard--fetch-todos ()
-  "Fetch todos."
+(defun welcome-dashboard--fetch-todos (&optional initial)
+  "Fetch todos. When INITIAL is t, set up recurring updates."
   (when (> welcome-dashboard-max-number-of-todos 0)
-  (when (and (executable-find "rg") (welcome-dashboard--last-root))
-    (let* ((root (welcome-dashboard--last-root))
-           (projectname (file-name-nondirectory (directory-file-name root)))
-           (command (format "rg -e \"(TODO|FIX|FIXME|PERF|HACK|NOTE):\s+\" --color=never --no-heading --with-filename --line-number --column --sort path %s" root)))
-      (setq welcome-dashboard-last-project-name projectname)
-      (welcome-dashboard--async-command-to-string
-       :command command
-       :callback `(lambda (result)
-                    (setq welcome-dashboard-todos (seq-take (welcome-dashboard--parse-todo-result result) welcome-dashboard-max-number-of-todos))
-                    (when (welcome-dashboard--isActive)
-                      (welcome-dashboard--refresh-screen))))))))
+    (when (and (executable-find "rg") (welcome-dashboard--last-root))
+      (let* ((root (welcome-dashboard--last-root))
+             (projectname (file-name-nondirectory (directory-file-name root)))
+             (command (format "rg -e \"(TODO|FIX|FIXME|PERF|HACK|NOTE):\s+\" --color=never --no-heading --with-filename --line-number --column --sort path %s" root))
+             (is-initial initial))  ; Capture the initial value in closure
+        (setq welcome-dashboard-last-project-name projectname)
+        (welcome-dashboard--async-command-to-string
+         :command command
+         :callback `(lambda (result)
+                     (setq welcome-dashboard-todos
+                           (seq-take (welcome-dashboard--parse-todo-result result)
+                                   welcome-dashboard-max-number-of-todos))
+                     ;; Use the captured is-initial value
+                     (when ,is-initial
+                       (run-with-timer 300 300 #'welcome-dashboard--fetch-todos))
+                     (when (welcome-dashboard--isActive)
+                       (welcome-dashboard--refresh-screen))))))))
 
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
