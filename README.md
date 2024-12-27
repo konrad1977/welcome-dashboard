@@ -1,7 +1,7 @@
 # welcome-dashboard
 A minimalistic dashboard for Emacs.
 
- ❤️ !["Please sponsor me if you like this package"](https://github.com/sponsors/konrad1977)
+ ❤️ [Please sponsor me if you like this package](https://github.com/sponsors/konrad1977)
 
 ## How it looks:
 !["Dashboard"](https://github.com/konrad1977/welcome-dashboard/blob/main/screenshots/screenshot_1.png)
