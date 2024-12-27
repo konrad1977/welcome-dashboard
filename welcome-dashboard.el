@@ -2,17 +2,19 @@
 
 ;; Welcome-dashboard screen
 
-;; Authod: Mikael Konradsson <mikael.konradsson@outlook.com>
+;; Author: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Maintainer: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Keywords: dashboard
 ;; Created: 2023
-;; Version: 0.1
+;; Version: 0.2
 ;; Package-Requires: ((emacs "27.1") (all-the-icons "5.0.0") (async "1.9.7") (nerd-icons "0.0.1"))
 ;; Homepage: https://github.com/konrad1977/welcome-dashboard
 
 ;;; Commentary:
 
 ;;; Minimalistic dashboard for Emacs.
+
+;;; Code:
 
 (require 'async)
 (require 'json)
@@ -23,11 +25,12 @@
 (require 'all-the-icons)
 (require 'package)
 
-;;; Code:
-
 (defvar welcome-dashboard-mode nil)
 (defvar welcome-dashboard-recentfiles '()
   "Recent list.")
+
+(defvar welcome-dashboard-recent-projects '()
+  "List of recent projects.")
 
 (defvar welcome-dashboard-todos '()
   "Todos.")
@@ -45,7 +48,7 @@
   :type '(string))
 
 (defcustom welcome-dashboard-use-fahrenheit nil
-  "Show weather temperature in fahrenheit."
+  "Show weather temperature in Fahrenheit."
   :group 'welcome-dashboard
   :type '(boolean))
 
@@ -61,6 +64,11 @@
 
 (defcustom welcome-dashboard-max-number-of-todos 5
   "Maximum number of todos to show."
+  :group 'welcome-dashboard
+  :type '(natnum))
+
+(defcustom welcome-dashboard-max-number-of-projects 5
+  "Maximum number of projects to show."
   :group 'welcome-dashboard
   :type '(natnum))
 
@@ -105,42 +113,8 @@
 (defvar welcome-dashboard--last-window-width nil
   "Last window width.")
 
-(defvar welcome-dashboard-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'welcome-dashboard--open-recent-file)
-    (define-key map (kbd "<return>") 'welcome-dashboard--open-recent-file)
-    (define-key map (kbd "o") 'welcome-dashboard--open-recent-file)
-
-    ;; Add shortcuts for file indexes
-    (dolist (i (number-sequence 1 9))
-      (define-key map (kbd (concat "C-" (number-to-string i)))
-                  `(lambda ()
-                     (interactive)
-                     (welcome-dashboard--open-recent-file-at-index ,i)))
-
-      (define-key map (kbd (concat "C-x " (number-to-string i)))
-                           `(lambda ()
-                              (interactive)
-                              (welcome-dashboard--open-todos-at-index ,i))))
-
-    map)
-  "Keymap for `welcome-dashboard-mode'.")
-
-(define-derived-mode welcome-dashboard-mode fundamental-mode "Welcome-dashboard"
-  "Major mode for the welcome-dashboard screen."
-  :group 'welcome-dashboard
-  :syntax-table nil
-  :abbrev-table nil
-  (buffer-disable-undo)
-  (setq-local display-line-numbers nil)
-  (setq-local truncate-lines t)
-  (setq-local mode-line-format nil)
-  (setq-local global-hl-line-mode nil)
-  (setq-local buffer-read-only t)
-  (use-local-map welcome-dashboard-mode-map))
-
 (defface welcome-dashboard-title-face
-  '((t :inherit font-lock-keyword-face :height 1.2 :weight thin))
+  '((t :inherit font-lock-constant-face :height 1.3 :weight bold))
   "Title face."
   :group 'welcome-dashboard)
 
@@ -149,8 +123,13 @@
   "Subtitle face."
   :group 'welcome-dashboard)
 
+(defface welcome-dashboard-separator-face
+  '((t :inherit 'font-lock-comment-face))
+  "Subtitle face."
+  :group 'welcome-dashboard)
+
 (defface welcome-dashboard-info-face
-  '((t :inherit font-lock-function-name-face :height 0.9 :bold t :italic t))
+  '((t :inherit font-lock-property-name-face :height 0.9 :bold t :italic t))
   "Face added to code-usage display."
   :group 'welcome-dashboard)
 
@@ -168,7 +147,6 @@
   '((t :inherit default :weight semi-bold))
   "Face for the file name."
   :group 'welcome-dashboard)
-
 (defface welcome-dashboard-time-face
   '((t :foreground "#a6adc8" :height 0.9 :weight thin))
   "Face for time."
@@ -210,9 +188,96 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-project-face
-  '((t :foreground "#f38ba8" :bold t))
+  '((t :inherit font-lock-function-name-face :weight semi-bold))
   "Face for project name."
   :group 'welcome-dashboard)
+
+(defvar welcome-dashboard-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'welcome-dashboard--open-recent-file)
+    (define-key map (kbd "<return>") 'welcome-dashboard--open-recent-file)
+    (define-key map (kbd "o") 'welcome-dashboard--open-recent-file)
+
+    (dolist (i (number-sequence 1 welcome-dashboard-max-number-of-projects))
+      (define-key map (kbd (concat "M-" (number-to-string i)))
+                  `(lambda ()
+                     (interactive)
+                     (welcome-dashboard--open-project-at-index ,i))))
+
+    (dolist (i (number-sequence 1 9))
+      (define-key map (kbd (concat "C-" (number-to-string i)))
+                  `(lambda ()
+                     (interactive)
+                     (welcome-dashboard--open-recent-file-at-index ,i)))
+
+      (define-key map (kbd (concat "C-x " (number-to-string i)))
+                           `(lambda ()
+                              (interactive)
+                              (welcome-dashboard--open-todos-at-index ,i))))
+
+    map)
+  "Keymap for `welcome-dashboard-mode'.")
+
+(define-derived-mode welcome-dashboard-mode fundamental-mode "Welcome-dashboard"
+  "Major mode for the welcome-dashboard screen."
+  :group 'welcome-dashboard
+  :syntax-table nil
+  :abbrev-table nil
+  (buffer-disable-undo)
+  (setq-local display-line-numbers nil)
+  (setq-local truncate-lines t)
+  (setq-local mode-line-format nil)
+  (setq-local global-hl-line-mode nil)
+  (setq-local buffer-read-only t)
+  (use-local-map welcome-dashboard-mode-map))
+
+(defun welcome-dashboard--ensure-recentf ()
+  "Ensure recentf is initialized and loaded."
+  (unless recentf-mode
+    (recentf-mode 1))
+  (unless (bound-and-true-p recentf-list)
+    (setq recentf-list nil))
+  (when (and (boundp 'recentf-list)
+             (not recentf-list))
+    (recentf-load-list)))
+
+(defun welcome-dashboard--get-recent-projects ()
+  "Get list of recent project roots from welcome-dashboard-recentfiles."
+  (welcome-dashboard--ensure-recentf)
+  (let ((projects '()))
+    (dolist (file welcome-dashboard-recentfiles)
+      (when-let* ((root (vc-find-root file ".git")))
+        (unless (member root projects)
+          (push root projects))))
+    (seq-take (nreverse projects) welcome-dashboard-max-number-of-projects)))
+
+(defun welcome-dashboard--insert-recent-projects ()
+  "Insert the recent projects in the welcome-dashboard buffer."
+  (unless welcome-dashboard-recent-projects
+    (setq welcome-dashboard-recent-projects (welcome-dashboard--get-recent-projects)))
+
+  (when welcome-dashboard-recent-projects
+    (dolist (project welcome-dashboard-recent-projects)
+      (let* ((project-name (file-name-nondirectory (directory-file-name project)))
+             (index (cl-position project welcome-dashboard-recent-projects :test #'equal))
+             (shortcut (+ index 1))
+             (project-line (format "%s %s %s"
+                                 (if welcome-dashboard-use-nerd-icons
+                                     (nerd-icons-octicon "nf-oct-repo_forked")
+                                   (all-the-icons-octicon "nf-oct-repo_forked"))
+                                 (propertize project-name 'face 'welcome-dashboard-project-face)
+                                 (propertize (number-to-string shortcut)
+                                           'face 'welcome-dashboard-shortcut-face))))
+        (welcome-dashboard--insert-text
+         (propertize project-line 'project-path project))))))
+
+(defun welcome-dashboard--open-project-at-index (index)
+  "Open the project at INDEX."
+  (interactive "nIndex: ")
+  (let ((projects welcome-dashboard-recent-projects))
+    (when (<= 1 index (length projects))
+      (let ((project (nth (1- index) projects)))
+        (find-file project)))))
 
 (defun welcome-dashboard--weather-icon-from-code (code)
   "Maps a weather (as CODE) to a corresponding string."
@@ -332,7 +397,6 @@ And adding an ellipsis."
 (defun welcome-dashboard--insert-recent-files ()
   "Insert the first x recent files with icons in the welcome-dashboard buffer."
   (recentf-mode)
-  (insert "\n")
   (setq welcome-dashboard-recentfiles (seq-take recentf-list 9))
   (let* ((files welcome-dashboard-recentfiles)
          (left-margin (welcome-dashboard--calculate-padding-left)))
@@ -349,7 +413,6 @@ And adding an ellipsis."
              (title-with-path (propertize title 'path full-path))
              (title-with-path-and-shortcut (concat title-with-path (propertize (format " [%s]" shortcut) 'face 'welcome-dashboard-shortcut-face))))
         (insert (format "%s%s\n" (make-string left-margin ?\s) title-with-path-and-shortcut))))))
-
 
 (defun welcome-dashboard--todo-icon ()
   "Todo icon."
@@ -461,8 +524,8 @@ And adding an ellipsis."
 
 (defun welcome-dashboard--truncate-text-right (text)
   "Truncate TEXT at the right to a maximum of 100 characters."
-  (if (> (length text) 70)
-      (concat (substring text 0 67) "...")
+  (if (> (length text) welcome-dashboard-path-max-length)
+      (concat (substring text 0 (- welcome-dashboard-path-max-length 3)) "...")
     text))
 
 
@@ -605,8 +668,10 @@ and parse it json and call (as CALLBACK)."
       (erase-buffer)
       (goto-char (point-min))
       (let ((inhibit-read-only t))
-        (insert "\n")
         (welcome-dashboard--insert-text (propertize welcome-dashboard-title 'face 'welcome-dashboard-title-face))
+        (insert "\n")
+        (welcome-dashboard--insert-recent-projects)
+        (welcome-dashboard--insert-separator)
         (welcome-dashboard--insert-recent-files)
         (setq cursor-type nil)
 
@@ -614,24 +679,31 @@ and parse it json and call (as CALLBACK)."
           (insert "\n")
           (welcome-dashboard--insert-todos))
 
-        (insert "\n")
+        (welcome-dashboard--insert-separator)
         (welcome-dashboard--insert-startup-time)
         (welcome-dashboard--insert-package-info packages)
 
         (when (welcome-dashboard--show-weather-info)
           (welcome-dashboard--insert-weather-info))
 
+        (insert "\n")
+        (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %R") 'face 'welcome-dashboard-time-face))
+
         (insert "\n\n")
         (insert (make-string left-margin ?\ ))
         (insert-image image)
-        (insert "\n\n")
-        (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %R") 'face 'welcome-dashboard-time-face))
 
         (when (not (welcome-dashboard--isActive))
           (switch-to-buffer welcome-dashboard-buffer))
         (welcome-dashboard-mode)
         (goto-char (point-min))
         (forward-line 3)))))
+
+(defun welcome-dashboard--insert-separator ()
+  "Insert a separator line."
+  (insert "\n")
+  (welcome-dashboard--insert-text
+   (propertize (make-string (+ welcome-dashboard-path-max-length (* welcome-dashboard-min-left-padding 2)) ?─) 'face 'welcome-dashboard-separator-face)))
 
 (provide 'welcome-dashboard)
 ;;; welcome-dashboard.el ends here
