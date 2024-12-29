@@ -36,7 +36,6 @@
   "Todos.")
 
 (defvar welcome-dashboard-last-project-name nil)
-
 (defvar welcome-dashboard-temperature nil)
 (defvar welcome-dashboard-weatherdescription nil)
 (defvar welcome-dashboard-weathericon nil)
@@ -49,6 +48,11 @@
 
 (defcustom welcome-dashboard-use-fahrenheit nil
   "Show weather temperature in Fahrenheit."
+  :group 'welcome-dashboard
+  :type '(boolean))
+
+(defcustom welcome-dashboard-show-file-path nil
+  "Show file path in welcome-dashboard."
   :group 'welcome-dashboard
   :type '(boolean))
 
@@ -406,10 +410,14 @@ And adding an ellipsis."
              (shortcut (format "%d" (+ index +1)))
              (file-name (file-name-nondirectory file))
              (file-dir (file-name-directory file))
-             (title (format "%s %s%s"
-                    (welcome-dashboard--file-icon file)
-                    (propertize (welcome-dashboard--truncate-path-in-middle file-dir welcome-dashboard-path-max-length) 'face 'welcome-dashboard-path-face)
-                    (propertize file-name 'face 'welcome-dashboard-filename-face)))
+             (title (if welcome-dashboard-show-file-path
+                       (format "%s %s%s"
+                               (welcome-dashboard--file-icon file)
+                               (propertize (welcome-dashboard--truncate-path-in-middle file-dir welcome-dashboard-path-max-length) 'face 'welcome-dashboard-path-face)
+                               (propertize file-name 'face 'welcome-dashboard-filename-face))
+                     (format "%s %s"
+                            (welcome-dashboard--file-icon file)
+                            (propertize file-name 'face 'welcome-dashboard-filename-face))))
              (title-with-path (propertize title 'path full-path))
              (title-with-path-and-shortcut (concat title-with-path (propertize (format " [%s]" shortcut) 'face 'welcome-dashboard-shortcut-face))))
         (insert (format "%s%s\n" (make-string left-margin ?\s) title-with-path-and-shortcut))))))
