@@ -54,6 +54,6 @@ An alternative dashboard for Emacs. Includes recent projects, recent files and a
   ```
   
   ## Shortcuts
-  *M*-number opens project
-  *C*-number opens recent files
-  *C*-x number opens the todo
+  M-number opens project
+  C-number opens recent files
+  C-x number opens todo with current number
