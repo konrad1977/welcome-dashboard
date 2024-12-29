@@ -523,13 +523,6 @@ And adding an ellipsis."
                                    (when (welcome-dashboard--show-weather-info)
                                      (run-with-idle-timer 0.1 nil #'welcome-dashboard--fetch-weather-data t))))))
 
-(defun welcome-dashboard-initialize ()
-  "Initialized dashboard."
-  (swith-to-buffer welcome-dashboard-buffer)
-  (goto-char (point-min))
-  (redisplay)
-  (run-hooks 'welcome-dashboard-create-welcome-hook))
-
 (defun welcome-dashboard--truncate-text-right (text)
   "Truncate TEXT at the right to a maximum of 100 characters."
   (if (> (length text) welcome-dashboard-path-max-length)

@@ -42,7 +42,7 @@ An alternative dashboard for Emacs. Includes recent projects, recent files and a
     (setq welcome-dashboard-use-nerd-icons t
           welcome-dashboard-longitude 6.0440
           welcome-dashboard-latitude 53.0825
-          welcome-dashboard-path-max-length 75
+              welcome-dashboard-path-max-length 75
           welcome-dashboard-show-file-path t 
           welcome-dashboard-use-fahrenheit nil
           welcome-dashboard-min-left-padding 10
