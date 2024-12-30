@@ -6,13 +6,13 @@
 ;; Maintainer: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Keywords: dashboard
 ;; Created: 2023
-;; Version: 0.2
+;; Version: 0.3
 ;; Package-Requires: ((emacs "27.1") (all-the-icons "5.0.0") (async "1.9.7") (nerd-icons "0.0.1"))
 ;; Homepage: https://github.com/konrad1977/welcome-dashboard
 
 ;;; Commentary:
 
-;;; Minimalistic dashboard for Emacs.
+;;; A dashboard for Emacs.
 
 ;;; Code:
 
@@ -59,6 +59,9 @@
 (defvar welcome-dashboard-weathericon nil
   "Weather icon.")
 
+(defvar welcome-dashboard--max-length 0
+  "Store the max length of the recent files.")
+
 (defcustom welcome-dashboard-use-nerd-icons nil
   "Use nerd icons."
   :group 'welcome-dashboard
@@ -94,7 +97,7 @@
   :group 'welcome-dashboard
   :type '(boolean))
 
-(defcustom welcome-dashboard-show-file-path nil
+(defcustom welcome-dashboard-show-file-path t
   "Show file path in welcome-dashboard."
   :group 'welcome-dashboard
   :type '(boolean))
@@ -104,12 +107,12 @@
   :group 'welcome-dashboard
   :type '(natnum))
 
-(defcustom welcome-dashboard-shortcut-spacing 10
+(defcustom welcome-dashboard-shortcut-spacing 8
   "Spacing between shortcuts and file."
   :group 'welcome-dashboard
   :type '(natnum))
 
-(defcustom welcome-dashboard-path-max-length 42
+(defcustom welcome-dashboard-path-max-length 80
   "Latitude for weather information."
   :group 'welcome-dashboard
   :type '(natnum))
@@ -297,7 +300,6 @@
           (push root projects))))
     (seq-take (nreverse projects) welcome-dashboard-max-number-of-projects)))
 
-
 (defun welcome-dashboard--open-project-at-index (index)
   "Open the project at INDEX."
   (interactive "nIndex: ")
@@ -439,50 +441,21 @@ And adding an ellipsis."
               (propertize file-name
                           'face 'welcome-dashboard-filename-face)))))
 
-(defvar welcome-dashboard-shortcuts-title "Shortcuts"
-  "Title for the shortcuts section.")
+(defun welcome-dashboard--format-project (project)
+  "Format a PROJECT entry for the dashboard."
+  (let* ((project-name (file-name-nondirectory (directory-file-name project)))
+         (index (cl-position project welcome-dashboard-recent-projects :test #'equal))
+         (shortcut (+ index 1))
+         (project-line (format "%s %s %s"
+                               (if welcome-dashboard-use-nerd-icons
+                                   (nerd-icons-octicon "nf-oct-repo_forked")
+                                 (all-the-icons-octicon "nf-oct-repo_forked"))
+                               (propertize project-name 'face 'welcome-dashboard-project-face)
+                               (propertize (number-to-string shortcut)
+                                           'face 'welcome-dashboard-shortcut-face))))
 
-(cl-defun welcome-dashboard--insert-two-columns (&key left-items
-                                                      left-title right-title
-                                                      left-formatter
-                                                      shortcut-modifier)
-  "Insert two columns where the right column shows keyboard shortcuts.
-LEFT-ITEMS is the list of items to display in the left column.
-LEFT-TITLE and RIGHT-TITLE are strings for column headers.
-LEFT-FORMATTER is a function that takes an item and returns a formatted string.
-SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut prefix."
-  (let* ((left-margin (- (welcome-dashboard--calculate-padding-left) welcome-dashboard-shortcut-spacing))
-         (window-width (window-width))
-         (count (length left-items))
-         (available-width (- window-width left-margin))
-         (column-width (/ available-width 2)))
-    ;; Insert titles
-    (insert (make-string left-margin ?\s))
-    (insert (propertize left-title
-                       'face 'welcome-dashboard-project-title-face))
-    (insert (make-string (+ (- column-width (length left-title))
-                           (/ welcome-dashboard-shortcut-spacing 2) 1) ?\s))
-    (insert (propertize right-title
-                       'face 'welcome-dashboard-project-title-face))
-    (insert "\n")
-    ;; Insert content
-    (dotimes (i count)
-      ;; Start new line with margin
-      (insert (make-string left-margin ?\s))
-      ;; Insert left column item
-      (when (< i (length left-items))
-        (let* ((item (nth i left-items))
-               (formatted-item (funcall left-formatter item))
-               (shortcut-text (propertize (format "[%s-%d]" shortcut-modifier (1+ i))
-                                        'face 'welcome-dashboard-shortcut-face))
-               (content-length (+ (length formatted-item) (length shortcut-text)))
-               (padding-length (+ (max 0 (- column-width content-length))
-                                welcome-dashboard-shortcut-spacing)))
-          (insert formatted-item)
-          (insert (make-string padding-length ?\s))
-          ;; Insert shortcut in right column
-          (insert shortcut-text)))
-      (insert "\n"))))
+    project-line))
+        
 
 (defun welcome-dashboard--insert-recent-files-and-shortcuts ()
   "Insert recent files with icons and shortcuts in the welcome-dashboard buffer."
@@ -490,10 +463,11 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
   (unless welcome-dashboard-recentfiles
     (setq welcome-dashboard-recentfiles (seq-take recentf-list 9)))
 
+  (welcome-dashboard--update-max-length)
+  
   (welcome-dashboard--insert-two-columns
    :left-items welcome-dashboard-recentfiles
    :left-title welcome-dashboard-files-title
-   :right-title welcome-dashboard-shortcuts-title
    :left-formatter #'welcome-dashboard--format-file
    :shortcut-modifier "C"))
 
@@ -502,12 +476,26 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
   (unless welcome-dashboard-recent-projects
     (setq welcome-dashboard-recent-projects (welcome-dashboard--get-recent-projects)))
 
+  (welcome-dashboard--update-max-length)
+
   (welcome-dashboard--insert-two-columns
    :left-items welcome-dashboard-recent-projects
    :left-title welcome-dashboard-projects-title
-   :right-title welcome-dashboard-shortcuts-title
-   :left-formatter #'welcome-dashboard--format-file
+   :left-formatter #'welcome-dashboard--format-project
    :shortcut-modifier "M"))
+
+(defun welcome-dashboard--insert-misc-info ()
+
+  (setq misc-list '())
+  (setq misc-list (cons (welcome-dashboard--startup-time) misc-list))
+  (setq misc-list (cons (welcome-dashboard--package-info) misc-list))
+  (setq misc-list (cons (welcome-dashboard--weather-info) misc-list))
+
+  (welcome-dashboard--insert-two-columns
+   :left-items misc-list
+   :left-title welcome-dashboard-projects-title
+   :left-formatter #'identity
+   :shortcut-modifier " "))
 
 (defun welcome-dashboard--todo-icon ()
   "Todo icon."
@@ -539,35 +527,6 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
         (welcome-dashboard--insert-text
          (propertize title 'path path))))))
 
-(defun welcome-dashboard--calculate-padding-left ()
-  "Calculate padding for left side."
-  (let ((current-width (window-width)))
-    (when (or (null welcome-dashboard--padding-cache)
-              (not (eq current-width welcome-dashboard--last-window-width)))
-      (setq welcome-dashboard--last-window-width current-width)
-      (setq welcome-dashboard--padding-cache
-            (if-let* ((files welcome-dashboard-recentfiles)
-                      (max-length (apply #'max (mapcar (lambda (path)
-                                                       (length (welcome-dashboard--truncate-path-in-middle path welcome-dashboard-path-max-length)))
-                                                     files)))
-                      (filenames (mapcar (lambda (path) (file-name-nondirectory path)) files))
-                      (max-filename-length (/ (apply #'max (mapcar #'length filenames)) 2))
-                      (left-margin (max (+ welcome-dashboard-min-left-padding max-filename-length)
-                                      (/ (- current-width max-length) 2))))
-                (- left-margin max-filename-length)
-              welcome-dashboard-min-left-padding)))
-    welcome-dashboard--padding-cache))
-
-(defun welcome-dashboard--insert-text (text)
-  "Insert (as TEXT)."
-  (let ((left-margin (- (welcome-dashboard--calculate-padding-left) welcome-dashboard-shortcut-spacing)))
-    (insert (format "%s%s\n" (make-string left-margin ?\s) text))))
-
-(defun welcome-dashboard--insert-title (text)
-  "Insert title (as TEXT)."
-  (when text
-    (let ((left-margin (- (welcome-dashboard--calculate-padding-left) welcome-dashboard-shortcut-spacing)))
-      (insert (format "%s%s\n" (make-string left-margin ?\s) text)))))
 
 (defun welcome-dashboard--redisplay-buffer-on-resize (&rest _)
   "Resize current buffer."
@@ -622,7 +581,6 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
       (concat (substring text 0 (- welcome-dashboard-path-max-length 3)) "...")
     text))
 
-
 (defun welcome-dashboard--clock-icon ()
   "Get the clock icon."
   (if welcome-dashboard-use-nerd-icons
@@ -632,13 +590,23 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
                 'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
                 'display '(raise 0))))
 
-(defun welcome-dashboard--insert-startup-time ()
-  "Insert startup time."
-  (welcome-dashboard--insert-text (format "%s %s %s %s"
-                                          (welcome-dashboard--clock-icon)
-                                          (propertize "Startup time:" 'face 'welcome-dashboard-text-info-face)
-                                          (propertize (emacs-init-time "%.2f") 'face 'welcome-dashboard-startup-time-face)
-                                          (propertize "seconds" 'face 'welcome-dashboard-text-info-face))))
+
+(defun welcome-dashboard--package-info ()
+  "Insert package info."
+  (let ((packages (format "%d" (welcome-dashboard--package-length))))
+    (format "%s %s %s"
+            (welcome-dashboard--package-icon)
+            (propertize packages 'face 'welcome-dashboard-info-face 'display '(raise -0.1))
+            (propertize "packages loaded" 'face 'welcome-dashboard-text-info-face 'display '(raise -0.1)))))
+
+
+(defun welcome-dashboard--startup-time()
+  "Startup time information."
+  (format "%s %s %s %s"
+          (welcome-dashboard--clock-icon)
+          (propertize "Startup time:" 'face 'welcome-dashboard-text-info-face)
+          (propertize (emacs-init-time "%.2f") 'face 'welcome-dashboard-startup-time-face)
+          (propertize "seconds" 'face 'welcome-dashboard-text-info-face)))
 
 
 (defun welcome-dashboard--package-icon ()
@@ -650,18 +618,13 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
                 'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
                 'display '(raise -0.1))))
 
-(defun welcome-dashboard--insert-package-info (packages)
-  "Insert package info as (PACKAGES)."
-  (welcome-dashboard--insert-text (format "%s %s %s"
-                                          (welcome-dashboard--package-icon)
-                                          (propertize packages 'face 'welcome-dashboard-info-face 'display '(raise -0.1))
-                                          (propertize "packages loaded" 'face 'welcome-dashboard-text-info-face 'display '(raise -0.1)))))
 
 (defun welcome-dashboard--temperature-symbol ()
   "Get the correct type of temperature symbol."
   (if welcome-dashboard-use-fahrenheit
       "℉"
     "℃"))
+
 
 (defun welcome-dashboard--show-weather-info ()
   "Check if we latitude and longitude and then show weather info."
@@ -671,16 +634,18 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
         t
       nil)))
 
-(defun welcome-dashboard--insert-weather-info ()
+
+(defun welcome-dashboard--weather-info ()
   "Insert weather info."
   (when (welcome-dashboard--show-weather-info)
     (if welcome-dashboard-weatherdescription
-        (welcome-dashboard--insert-text (format "%s %s, %s%s"
-                                      (propertize welcome-dashboard-weathericon 'face '(:family "Weather icons" :height 1.0) 'display '(raise 0))
-                                      (propertize welcome-dashboard-weatherdescription 'face 'welcome-dashboard-weather-description-face)
-                                      (propertize welcome-dashboard-temperature 'face 'welcome-dashboard-weather-temperature-face)
-                                      (propertize (welcome-dashboard--temperature-symbol) 'face 'welcome-dashboard-text-info-face)))
-      (welcome-dashboard--insert-text (propertize "Loading weather data..." 'face 'welcome-dashboard-weather-temperature-face)))))
+        (format "%s %s, %s%s"
+                (propertize welcome-dashboard-weathericon 'face '(:family "Weather icons" :height 1.0) 'display '(raise 0))
+                (propertize welcome-dashboard-weatherdescription 'face 'welcome-dashboard-weather-description-face)
+                (propertize welcome-dashboard-temperature 'face 'welcome-dashboard-weather-temperature-face)
+                (propertize (welcome-dashboard--temperature-symbol) 'face 'welcome-dashboard-text-info-face))
+      (propertize "Loading weather data..." 'face 'welcome-dashboard-weather-temperature-face))))
+
 
 (defun welcome-dashboard--parse-todo-result (result)
   "Parse the RESULT and create a list of todo items."
@@ -697,6 +662,7 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
           (push matches todos))
         (nreverse todos)))))
 
+
 (cl-defun welcome-dashboard--async-command-to-string (&key command &key callback)
   "Async shell command to JSON run async (as COMMAND)
 and parse it json and call (as CALLBACK)."
@@ -706,11 +672,13 @@ and parse it json and call (as CALLBACK)."
    `(lambda (result)
       (funcall ,callback result))))
 
+
 (defun welcome-dashboard--last-root ()
   "Get the version control root directory of the most recent file."
   (when (> (length welcome-dashboard-recentfiles) 0)
     (let ((file (car welcome-dashboard-recentfiles)))
       (vc-find-root file ".git"))))
+
 
 (defun welcome-dashboard--fetch-todos (&optional initial)
   "Fetch todos. When INITIAL is t, set up recurring updates."
@@ -733,6 +701,7 @@ and parse it json and call (as CALLBACK)."
                      (when (welcome-dashboard--isActive)
                        (welcome-dashboard--refresh-screen))))))))
 
+
 (defun welcome-dashboard--package-length ()
   "Get the number of installed packages."
   (cond
@@ -744,10 +713,12 @@ and parse it json and call (as CALLBACK)."
      (length elpaca--queued))
     (t 0)))
 
+
 (defun welcome-dashboard--isActive ()
   "Check if buffer is active and visible."
   (or (eq welcome-dashboard-buffer (window-buffer (selected-window)))
-     (get-buffer-window welcome-dashboard-buffer 'visible)))
+      (get-buffer-window welcome-dashboard-buffer 'visible)))
+
 
 (defun welcome-dashboard--refresh-screen ()
   "Show the welcome-dashboard screen."
@@ -757,17 +728,15 @@ and parse it json and call (as CALLBACK)."
            (image (create-image welcome-dashboard-image-file 'png nil :width welcome-dashboard-image-width :height welcome-dashboard-image-height))
            (size (image-size image))
            (width (car size))
-           (left-margin (max welcome-dashboard-min-left-padding (floor (/ (- (window-width) width) 2))))
-           (packages (format "%d" (welcome-dashboard--package-length))))
+           (left-margin (max welcome-dashboard-min-left-padding (floor (/ (- (window-width) width) 2)))))
       (erase-buffer)
       (goto-char (point-min))
       (let ((inhibit-read-only t))
         (welcome-dashboard--insert-title (propertize welcome-dashboard-title 'face 'welcome-dashboard-title-face))
-        (welcome-dashboard--insert-separator)
         (welcome-dashboard--insert-recent-projects-and-shortcuts)
         (welcome-dashboard--insert-separator)
         (welcome-dashboard--insert-recent-files-and-shortcuts)
-        
+
         (setq cursor-type nil)
 
         (when (> (length welcome-dashboard-todos) 0)
@@ -775,11 +744,7 @@ and parse it json and call (as CALLBACK)."
           (welcome-dashboard--insert-todos))
 
         (welcome-dashboard--insert-separator)
-        (welcome-dashboard--insert-startup-time)
-        (welcome-dashboard--insert-package-info packages)
-
-        (when (welcome-dashboard--show-weather-info)
-          (welcome-dashboard--insert-weather-info))
+        (welcome-dashboard--insert-misc-info)
 
         (insert "\n")
         (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %R") 'face 'welcome-dashboard-time-face))
@@ -794,13 +759,122 @@ and parse it json and call (as CALLBACK)."
         (goto-char (point-min))
         (forward-line 3)))))
 
+
+(cl-defun welcome-dashboard--insert-two-columns (&key left-items
+                                                      left-title
+                                                      left-formatter
+                                                      shortcut-modifier)
+  "Insert two columns where the right column shows keyboard shortcuts.
+LEFT-ITEMS is the list of items to display in the left column.
+LEFT-TITLE and RIGHT-TITLE are strings for column headers.
+LEFT-FORMATTER is a function that takes an item and returns a formatted string.
+SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut prefix."
+  (let* ((window-width (window-width))
+         (count (length left-items))
+         (shortcut-width (+ (length shortcut-modifier) 3))  ; +3 for [-n]
+         ;; Calculate total width needed
+         (total-content-width (+ welcome-dashboard--max-length
+                                shortcut-width
+                                welcome-dashboard-shortcut-spacing))
+         ;; Center everything
+         (left-margin (max welcome-dashboard-min-left-padding
+                          (/ (- window-width total-content-width) 2))))
+    
+    ;; Insert title
+    (when left-title
+      (insert (make-string left-margin ?\s))
+      (insert (propertize left-title
+                         'face 'welcome-dashboard-project-title-face))
+      (insert "\n"))
+    
+    ;; Insert content
+    (dotimes (i count)
+      ;; Start new line with margin
+      (insert (make-string left-margin ?\s))
+      ;; Insert left column item
+      (when (< i (length left-items))
+        (let* ((item (nth i left-items))
+               (formatted-item (funcall left-formatter item))
+               (shortcut-text (when (not (string-empty-p (string-trim shortcut-modifier)))
+                            (propertize (format "[%s-%d]" shortcut-modifier (1+ i))
+                                       'face 'welcome-dashboard-shortcut-face)))
+               ;; Calculate padding between item and shortcut
+               (padding-length (- (+ welcome-dashboard--max-length welcome-dashboard-shortcut-spacing)
+                              (length formatted-item))))
+          ;; Insert item, padding, and shortcut
+          (insert formatted-item)
+          (insert (make-string padding-length ?\s))
+          (when shortcut-text
+            (insert shortcut-text))))
+      (insert "\n"))))
+
+
+(defun welcome-dashboard--calculate-padding-left ()
+  "Calculate padding for left side."
+  (message "Calculating padding left")
+  (message "Window width: %d" (window-width))
+  (message "Max length: %d" welcome-dashboard--max-length)
+  (message "Shortcut spacing: %d" welcome-dashboard-shortcut-spacing)
+  (message "Shortcut width: %d" 5)
+
+  (let* ((window-width (window-width))
+         (shortcut-width 5)  ; [M-1] is 5 characters
+         (total-content-width (+ welcome-dashboard--max-length
+                               welcome-dashboard-shortcut-spacing
+                               shortcut-width
+                               -31
+                               ))
+         (left-margin (max welcome-dashboard-min-left-padding
+                         (/ (- window-width total-content-width) 2))))
+    left-margin))
+
+
+(defun welcome-dashboard--insert-text (text)
+  "Insert (as TEXT)."
+  (let ((left-margin (- (welcome-dashboard--calculate-padding-left) welcome-dashboard-shortcut-spacing)))
+    (insert (format "%s%s\n" (make-string left-margin ?\s) text))))
+
+
+(defun welcome-dashboard--insert-title (text)
+  "Insert title (as TEXT)."
+  (when text
+    (let ((left-margin (- (welcome-dashboard--calculate-padding-left) welcome-dashboard-shortcut-spacing)))
+      (insert (format "%s%s\n" (make-string left-margin ?\s) text)))))
+
+
 (defun welcome-dashboard--insert-separator ()
   "Insert a separator line."
   (insert "\n")
   (when welcome-dashboard-show-separator
-    (let ((separator-char (string-to-char welcome-dashboard-separator-character)))
+    (let (
+          (separator-char (string-to-char welcome-dashboard-separator-character))
+          (left-margin (welcome-dashboard--calculate-padding-left)))
       (welcome-dashboard--insert-title
-       (propertize (make-string (+ welcome-dashboard-path-max-length (* welcome-dashboard-min-left-padding 2)) separator-char) 'face 'welcome-dashboard-separator-face)))))
+       (propertize (make-string
+                    (+ left-margin )
+                    separator-char) 'face 'welcome-dashboard-separator-face)))))
+
+
+(defun welcome-dashboard--calculate-item-length (items formatter)
+  "Calculate the maximum length of formatted items.
+ITEMS is the list of items to check.
+FORMATTER is a function that takes an item and returns a formatted string."
+  (if items (apply #'max (mapcar (lambda (item) (length (funcall formatter item))) items)) 0))
+
+
+(cl-defun welcome-dashboard--calculate-max-length (&key project-items recent-items)
+  "Calculate the maximum length of the PROJECT-ITEMS and RECENT-ITEMS."
+  (let* ((max-length-projects (welcome-dashboard--calculate-item-length project-items #'welcome-dashboard--format-project))
+         (max-length-recent (welcome-dashboard--calculate-item-length recent-items #'welcome-dashboard--format-file)))
+    (setq welcome-dashboard--max-length (max max-length-projects max-length-recent))))
+
+
+(defun welcome-dashboard--update-max-length ()
+  "Update the max length of the recent files."
+  (recentf-mode)
+  (setq welcome-dashboard--max-length (welcome-dashboard--calculate-max-length
+                                      :project-items (welcome-dashboard--get-recent-projects)
+                                      :recent-items (seq-take recentf-list 9))))
 
 (provide 'welcome-dashboard)
 ;;; welcome-dashboard.el ends here
