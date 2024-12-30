@@ -20,6 +20,7 @@ Welcome Dashboard is an Emacs package that provides a customizable dashboard/sta
 | `welcome-dashboard-use-nerd-icons` | boolean | nil | Enable Nerd Fonts icons |
 | `welcome-dashboard-show-separator` | boolean | t | Display separator lines |
 | `welcome-dashboard-separator-string` | string | "─" | String used for separators |
+| `welcome-dashboard-shortcut-delimiter` | character | ?s | Character used for separation of item and shortcut |
 | `welcome-dashboard-show-file-path` | boolean | t | Show complete file paths |
 
 ### Layout and Sizing

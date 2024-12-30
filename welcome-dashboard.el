@@ -82,6 +82,11 @@
   :group 'welcome-dashboard
   :type '(string))
 
+(defcustom welcome-dashboard-shortcut-delimiter ?\s
+  "Character to use for padding (space, dot, underscore etc)."
+  :type 'character
+  :group 'welcome-dashboard)
+
 (defcustom welcome-dashboard-title "Welcome"
   "Welcome-dashboard title."
   :group 'welcome-dashboard
@@ -238,6 +243,11 @@
 
 (defface welcome-dashboard-weather-temperature-face
   '((t :foreground "#f38ba8" :height 0.9 :weight thin :bold nil :italic nil))
+  "Face for temperature."
+  :group 'welcome-dashboard)
+
+(defface welcome-dashboard-shortcut-delimiter-face
+  '((t :inherit font-lock-comment-face))
   "Face for temperature."
   :group 'welcome-dashboard)
 
@@ -840,8 +850,8 @@ SHORTCUT-FACE is the face for the keyboard shortcuts."
                               (length formatted-item))))
           ;; Insert item, padding, and shortcut
           (insert formatted-item)
-          (insert (make-string padding-length ?\s))
           (when shortcut-text
+            (insert (propertize (make-string padding-length welcome-dashboard-shortcut-delimiter) 'face 'welcome-dashboard-shortcut-delimiter-face))
             (insert shortcut-text))))
       (insert "\n"))))
 
