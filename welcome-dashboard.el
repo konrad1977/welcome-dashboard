@@ -299,7 +299,7 @@
 
 
 (defun welcome-dashboard--get-recent-projects ()
-  "Get list of recent project roots from welcome-dashboard-recentfiles."
+  "Get list of recent projects."
   (welcome-dashboard--ensure-recentf)
   (let ((projects '()))
     (dolist (file welcome-dashboard-recentfiles)
@@ -574,7 +574,9 @@ And adding an ellipsis."
     (welcome-dashboard--refresh-screen)))
 
 (defun welcome-dashboard--fetch-weather-data (&optional initial)
-  "Fetch weather data from API. INITIAL indicates if this is the first fetch."
+  "Fetch weather data for the welcome dashboard.
+If INITIAL is non-nil, perform an initial fetch."
+
   (let ((url-request-method "GET")
         (url-request-extra-headers '(("Content-Type" . "application/json")))
         (url (format "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current_weather=true"
@@ -721,7 +723,7 @@ and parse it json and call (as CALLBACK)."
 
 
 (defun welcome-dashboard--fetch-todos (&optional initial)
-  "Fetch todos. When INITIAL is t, set up recurring updates."
+  "Fetch todos.  When INITIAL is t, set up recurring updates."
   (when (> welcome-dashboard-max-number-of-todos 0)
     (when (and (executable-find "rg") (welcome-dashboard--last-root))
       (let* ((root (welcome-dashboard--last-root))
@@ -795,13 +797,16 @@ and parse it json and call (as CALLBACK)."
                                                       left-title
                                                       left-formatter
                                                       shortcut-modifier
-                                                      shortcut-face
-                                                      )
+                                                      shortcut-face)
   "Insert two columns where the right column shows keyboard shortcuts.
 LEFT-ITEMS is the list of items to display in the left column.
-LEFT-TITLE and RIGHT-TITLE are strings for column headers.
-LEFT-FORMATTER is a function that takes an item and returns a formatted string.
-SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut prefix."
+LEFT-TITLE is a string for the left column header.
+LEFT-FORMATTER is a function that takes an item and
+returns a formatted string.
+SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for
+the keyboard shortcut prefix.
+SHORTCUT-FACE is the face for the keyboard shortcuts."
+
   (let* ((window-width (window-width))
          (count (length left-items))
          (shortcut-width (+ (length shortcut-modifier) 4))  ; +4 for [-n]
