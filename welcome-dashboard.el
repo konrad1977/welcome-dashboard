@@ -77,7 +77,7 @@
   :group 'welcome-dashboard
   :type '(string))
 
-(defcustom welcome-dashboard-separator-character "─"
+(defcustom welcome-dashboard-separator-string "· · ─────── ·· ─────── · ·"
   "Separator character."
   :group 'welcome-dashboard
   :type '(string))
@@ -843,9 +843,9 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
 
 (defun welcome-dashboard--insert-separator ()
   "Insert a separator line."
-  (when welcome-dashboard-show-separator
+  (when (and welcome-dashboard-show-separator (stringp welcome-dashboard-separator-string))
     (insert "\n")
-    (welcome-dashboard--insert-centered (propertize "· · ─────── ·· ─────── · ·" 'face 'welcome-dashboard-separator-face))
+    (welcome-dashboard--insert-centered (propertize welcome-dashboard-separator-string 'face 'welcome-dashboard-separator-face))
     (insert "\n")))
 
 
