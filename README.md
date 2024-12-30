@@ -3,10 +3,62 @@ An alternative dashboard for Emacs. Includes recent projects, recent files and a
 
  ❤️ [Please sponsor me if you like this package](https://github.com/sponsors/konrad1977)
 
-## How it looks:
+### How it looks:
 !["Dashboard"](https://github.com/konrad1977/welcome-dashboard/blob/main/screenshots/screenshot_1.png)
 
-## Configuration and installation
+## Welcome Dashboard Customization
+
+Welcome Dashboard is an Emacs package that provides a customizable dashboard/start screen. Here's how to configure it using `use-package`:
+
+## Available Customization Options
+
+### Display Settings
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `welcome-dashboard-title` | string | "Welcome" | Main dashboard title |
+| `welcome-dashboard-use-nerd-icons` | boolean | nil | Enable Nerd Fonts icons |
+| `welcome-dashboard-show-separator` | boolean | t | Display separator lines |
+| `welcome-dashboard-separator-character` | string | "─" | Character used for separators |
+| `welcome-dashboard-show-file-path` | boolean | t | Show complete file paths |
+
+### Layout and Sizing
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `welcome-dashboard-min-left-padding` | integer | 10 | Minimum left padding |
+| `welcome-dashboard-shortcut-spacing` | integer | 8 | Space between shortcuts and items |
+| `welcome-dashboard-path-max-length` | integer | 80 | Maximum length for file paths |
+
+### Section Titles and Limits
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `welcome-dashboard-projects-title` | string | "Recent projects: [M-number]" | Projects section title |
+| `welcome-dashboard-files-title` | string | "Recent files: [C-number]" | Recent files section title |
+| `welcome-dashboard-max-number-of-recent-files` | integer | 5 | Maximum recent files shown |
+| `welcome-dashboard-max-number-of-todos` | integer | 4 | Maximum todos shown |
+| `welcome-dashboard-max-number-of-projects` | integer | 3 | Maximum projects shown |
+
+### Weather Integration
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `welcome-dashboard-latitude` | float | nil | Latitude for weather data |
+| `welcome-dashboard-longitude` | float | nil | Longitude for weather data |
+| `welcome-dashboard-use-fahrenheit` | boolean | nil | Use Fahrenheit instead of Celsius |
+
+### Image Settings
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `welcome-dashboard-image-file` | string | "" | Path to dashboard image |
+| `welcome-dashboard-image-width` | integer | 200 | Image width in pixels |
+| `welcome-dashboard-image-height` | integer | 200 | Image height in pixels |
+
+## Example Configuration
+
+Here's a complete example configuration:
 
 ```elisp
 (use-package welcome-dashboard
@@ -55,7 +107,14 @@ An alternative dashboard for Emacs. Includes recent projects, recent files and a
     (welcome-dashboard-create-welcome-hook))
   ```
   
-  ## Shortcuts
-  M-number opens project
-  C-number opens recent files
-  C-x number opens todo with current number
+## Notes
+
+- All settings can be customized through Emacs' customization interface (`M-x customize-group RET welcome-dashboard RET`)
+- Weather functionality requires valid latitude and longitude coordinates
+- Nerd icons require a Nerd Fonts compatible font to be installed
+- Image display requires a valid path to an image file
+  
+## Shortcuts
+M-number opens project
+C-number opens recent files
+C-x number opens todo with current number
