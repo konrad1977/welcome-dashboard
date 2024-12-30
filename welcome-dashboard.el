@@ -505,6 +505,7 @@ And adding an ellipsis."
   "Insert misc info in the welcome-dashboard buffer."
   (when (and (> (length welcome-dashboard-todos) 0) (welcome-dashboard--isActive))
     (welcome-dashboard--update-max-length)
+    (welcome-dashboard--insert-separator)
     (welcome-dashboard--insert-two-columns
      :left-items (welcome-dashboard--todo-items)
      :left-title (welcome-dashboard--todo-title)
@@ -843,7 +844,9 @@ SHORTCUT-MODIFIER is a string (e.g. \"M\" or \"C\") for the keyboard shortcut pr
 (defun welcome-dashboard--insert-separator ()
   "Insert a separator line."
   (when welcome-dashboard-show-separator
-  (welcome-dashboard--insert-centered (propertize "· · ─────── ·· ─────── · ·" 'face 'welcome-dashboard-separator-face))))
+    (insert "\n")
+    (welcome-dashboard--insert-centered (propertize "· · ─────── ·· ─────── · ·" 'face 'welcome-dashboard-separator-face))
+    (insert "\n")))
 
 
 (defun welcome-dashboard--calculate-item-length (items formatter)
