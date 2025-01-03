@@ -566,8 +566,7 @@ And adding an ellipsis."
   "Insert individual todo items."
   (let (todo-list)
     (dolist (todo welcome-dashboard-todos)
-      (let* ((index (cl-position todo welcome-dashboard-todos :test #'equal))
-             (path (nth 0 todo))
+      (let* ((path (nth 0 todo))
              (type (nth 3 todo))
              (text (nth 4 todo))
              (title (format "%s %s %s"
