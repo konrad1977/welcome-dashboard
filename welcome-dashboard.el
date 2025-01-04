@@ -561,10 +561,9 @@ And adding an ellipsis."
             (propertize "You got work todo in" 'face 'welcome-dashboard-subtitle-face)
             (propertize welcome-dashboard-last-project-name 'face 'welcome-dashboard-project-face))))
 
-
 (defun welcome-dashboard--todo-items ()
   "Insert individual todo items."
-  (let (todo-list)
+  (let ((todo-list '()))
     (dolist (todo welcome-dashboard-todos)
       (let* ((path (nth 0 todo))
              (type (nth 3 todo))
