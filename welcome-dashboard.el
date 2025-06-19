@@ -452,33 +452,35 @@ And adding an ellipsis."
                welcome-dashboard--file-icon-cache)))
 
 (defun welcome-dashboard--format-file (file)
-  "Format a FILE entry for the dashboard."
+  "Format a FILE entry for the dashboard, with `path` text property."
   (let* ((file-name (file-name-nondirectory file))
-         (file-dir (file-name-directory file)))
-    (if welcome-dashboard-show-file-path
-        (format "%s %s%s"
-                (welcome-dashboard--file-icon file)
-                (propertize (welcome-dashboard--truncate-path-in-middle
-                           file-dir
-                           welcome-dashboard-path-max-length)
-                          'face 'welcome-dashboard-path-face)
-                (propertize file-name
-                          'face 'welcome-dashboard-filename-face))
-      (format "%s %s"
-              (welcome-dashboard--file-icon file)
-              (propertize file-name
-                          'face 'welcome-dashboard-filename-face)))))
+         (file-dir (file-name-directory file))
+         (entry-text
+          (if welcome-dashboard-show-file-path
+              (format "%s %s%s"
+                      (welcome-dashboard--file-icon file)
+                      (propertize (welcome-dashboard--truncate-path-in-middle
+                                   file-dir
+                                   welcome-dashboard-path-max-length)
+                                  'face 'welcome-dashboard-path-face)
+                      (propertize file-name
+                                  'face 'welcome-dashboard-filename-face))
+            (format "%s %s"
+                    (welcome-dashboard--file-icon file)
+                    (propertize file-name
+                                'face 'welcome-dashboard-filename-face)))))
+    (propertize entry-text 'path file)))
 
 (defun welcome-dashboard--format-project (project)
-  "Format a PROJECT entry for the dashboard."
+  "Format a PROJECT entry for the dashboard, with `path` property."
   (let* ((project-name (file-name-nondirectory (directory-file-name project)))
          (project-line (format "%s %s"
                                (if welcome-dashboard-use-nerd-icons
                                    (nerd-icons-octicon "nf-oct-repo_forked")
                                  (all-the-icons-octicon "nf-oct-repo_forked"))
-                               (propertize project-name 'face 'welcome-dashboard-project-face))))
-    project-line))
-
+                               (propertize project-name
+                                           'face 'welcome-dashboard-project-face))))
+    (propertize project-line 'path project)))
 
 (defun welcome-dashboard--insert-recent-projects-and-shortcuts ()
   "Insert the recent projects in the welcome-dashboard buffer."
