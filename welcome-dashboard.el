@@ -16,14 +16,21 @@
 
 ;;; Code:
 
-(require 'async)
 (require 'json)
 (require 'recentf)
 (require 'url)
-(require 'vc)
-(require 'nerd-icons)
-(require 'all-the-icons)
-(require 'package)
+
+;; Defer loading heavier dependencies until needed
+(declare-function nerd-icons-icon-for-file "nerd-icons")
+(declare-function nerd-icons-icon-for-dir "nerd-icons")
+(declare-function nerd-icons-octicon "nerd-icons")
+(declare-function nerd-icons-wicon "nerd-icons")
+(declare-function nerd-icons-mdicon "nerd-icons")
+(declare-function nerd-icons-codicon "nerd-icons")
+(declare-function all-the-icons-icon-for-file "all-the-icons")
+(declare-function all-the-icons-icon-for-weather "all-the-icons")
+(declare-function all-the-icons-octicon "all-the-icons")
+(declare-function all-the-icons-octicon-family "all-the-icons")
 
 (defvar welcome-dashboard-mode nil)
 (defvar welcome-dashboard-recentfiles '()
@@ -40,6 +47,12 @@
 
 (defvar welcome-dashboard--file-icon-cache (make-hash-table :test 'equal)
   "Cache for file icons.")
+
+(defvar welcome-dashboard--formatted-file-cache (make-hash-table :test 'equal)
+  "Cache for formatted file entries.")
+
+(defvar welcome-dashboard--formatted-project-cache (make-hash-table :test 'equal)
+  "Cache for formatted project entries.")
 
 (defvar welcome-dashboard--padding-cache nil
   "Cache for padding.")
@@ -172,7 +185,7 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-subtitle-face
-  '((t :inherit font-lock-keyword-face))
+  '((t :inherit font-lock-comment-face))
   "Subtitle face."
   :group 'welcome-dashboard)
 
@@ -182,7 +195,7 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-info-face
-  '((t :inherit font-lock-property-name-face :height 0.9 :bold t :italic t))
+  '((t :inherit success :height 0.9 :bold t :italic t))
   "Face added to code-usage display."
   :group 'welcome-dashboard)
 
@@ -202,7 +215,7 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-time-face
-  '((t :foreground "#a6adc8" :height 0.9 :weight thin))
+  '((t :inherit mode-line-buffer-id :height 0.9 :weight thin))
   "Face for time."
   :group 'welcome-dashboard)
 
@@ -212,12 +225,12 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-startup-time-face
-  '((t :foreground "#C2A4F8" :height 0.9 :weight thin :bold nil :italic nil))
+  '((t :inherit warning :height 0.9 :weight thin :bold nil :italic nil))
   "Face for startup time."
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-recent-project-shortcut-face
-  '((t :inherit font-lock-function-name-face :weight normal))
+  '((t :inherit mode-line-buffer-id :weight normal))
   "Face for recent files shortcuts."
   :group 'welcome-dashboard)
 
@@ -227,7 +240,7 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-shortcut-todo-face
-  '((t :foreground "#abd47c" :weight normal))
+  '((t :inherit font-lock-constant-face :weight normal))
   "Face for todo shortcuts."
   :group 'welcome-dashboard)
 
@@ -252,7 +265,7 @@
   :group 'welcome-dashboard)
 
 (defface welcome-dashboard-project-face
-  '((t :inherit font-lock-number-face :weight semi-bold))
+  '((t :inherit font-lock-doc-face :weight semi-bold))
   "Face for project name."
   :group 'welcome-dashboard)
 
@@ -332,37 +345,39 @@
   "Maps a weather (as CODE) to a corresponding string."
   (if welcome-dashboard-use-nerd-icons
       (progn
+        (require 'nerd-icons)
         (nerd-icons-wicon
-      (pcase code
-        (`0 "nf-weather-day_sunny")
-        ((or `1 `2 `3) "nf-weather-cloudy")
-        ((or `45 `48) "nf-weather-fog")
-        ((or `51 `53 `55) "nf-weather-sleet")
-        ((or `56 `57) "nf-weather-snow")
-        ((or `61 `63 `65) "nf-weather-day_rain_mix")
-        ((or `66 `67) "nf-weather-rain-mix")
-        ((or `71 `73 `75) "nf-weather-snow")
-        (`77 "nf-weather-snow")
-        ((or `80 `81 `82) "nf-weather-rain")
-        ((or `85 `86) "nf-weather-rain-mix")
-        ((or `95 `96 `99) "nf-weather-thunderstorm")
-        (_ "Unknown"))))
+         (pcase code
+           (`0 "nf-weather-day_sunny")
+           ((or `1 `2 `3) "nf-weather-cloudy")
+           ((or `45 `48) "nf-weather-fog")
+           ((or `51 `53 `55) "nf-weather-sleet")
+           ((or `56 `57) "nf-weather-snow")
+           ((or `61 `63 `65) "nf-weather-day_rain_mix")
+           ((or `66 `67) "nf-weather-rain-mix")
+           ((or `71 `73 `75) "nf-weather-snow")
+           (`77 "nf-weather-snow")
+           ((or `80 `81 `82) "nf-weather-rain")
+           ((or `85 `86) "nf-weather-rain-mix")
+           ((or `95 `96 `99) "nf-weather-thunderstorm")
+           (_ "Unknown"))))
     (progn
+      (require 'all-the-icons)
       (all-the-icons-icon-for-weather
-      (pcase code
-        (`0 "wi-day-sunny")
-        ((or `1 `2 `3) "wi-day-cloudy")
-        ((or `45 `48) "wi-day-fog")
-        ((or `51 `53 `55) "sleet")
-        ((or `56 `57) "wi-snow")
-        ((or `61 `63 `65) "wi-day-rain")
-        ((or `66 `67) "wi-day-rain-mix")
-        ((or `71 `73 `75) "wi-snow")
-        (`77 "wi-snow")
-        ((or `80 `81 `82) "wi-rain")
-        ((or `85 `86) "wi-rain-mix")
-        ((or `95 `96 `99) "wi-thunderstorm")
-        (_ "Unknown"))))))
+       (pcase code
+         (`0 "wi-day-sunny")
+         ((or `1 `2 `3) "wi-day-cloudy")
+         ((or `45 `48) "wi-day-fog")
+         ((or `51 `53 `55) "sleet")
+         ((or `56 `57) "wi-snow")
+         ((or `61 `63 `65) "wi-day-rain")
+         ((or `66 `67) "wi-day-rain-mix")
+         ((or `71 `73 `75) "wi-snow")
+         (`77 "wi-snow")
+         ((or `80 `81 `82) "wi-rain")
+         ((or `85 `86) "wi-rain-mix")
+         ((or `95 `96 `99) "wi-thunderstorm")
+         (_ "Unknown"))))))
 
 
 (defun welcome-dashboard--weather-code-to-string (code)
@@ -445,42 +460,55 @@ And adding an ellipsis."
   (or (gethash file welcome-dashboard--file-icon-cache)
       (puthash file
                (if welcome-dashboard-use-nerd-icons
-                   (propertize (cond ((not (file-exists-p file)) (nerd-icons-mdicon "nf-md-alert_remove" :face '(:inherit nerd-icons-orange)))
-                                    ((file-directory-p file) (nerd-icons-icon-for-dir file))
-                                    (t (nerd-icons-icon-for-file file))))
-                 (propertize (all-the-icons-icon-for-file file :v-adjust -0.05) 'face '(:family "all-the-icons" :height 1.0)))
+                   (progn
+                     (require 'nerd-icons)
+                     (propertize (cond ((not (file-exists-p file)) (nerd-icons-mdicon "nf-md-alert_remove" :face '(:inherit nerd-icons-orange)))
+                                      ((file-directory-p file) (nerd-icons-icon-for-dir file))
+                                      (t (nerd-icons-icon-for-file file)))))
+                 (progn
+                   (require 'all-the-icons)
+                   (propertize (all-the-icons-icon-for-file file :v-adjust -0.05) 'face '(:family "all-the-icons" :height 1.0))))
                welcome-dashboard--file-icon-cache)))
 
 (defun welcome-dashboard--format-file (file)
   "Format a FILE entry for the dashboard, with `path` text property."
-  (let* ((file-name (file-name-nondirectory file))
-         (file-dir (file-name-directory file))
-         (entry-text
-          (if welcome-dashboard-show-file-path
-              (format "%s %s%s"
-                      (welcome-dashboard--file-icon file)
-                      (propertize (welcome-dashboard--truncate-path-in-middle
-                                   file-dir
-                                   welcome-dashboard-path-max-length)
-                                  'face 'welcome-dashboard-path-face)
-                      (propertize file-name
-                                  'face 'welcome-dashboard-filename-face))
-            (format "%s %s"
-                    (welcome-dashboard--file-icon file)
-                    (propertize file-name
-                                'face 'welcome-dashboard-filename-face)))))
-    (propertize entry-text 'path file)))
+  (or (gethash file welcome-dashboard--formatted-file-cache)
+      (puthash file
+               (let* ((file-name (file-name-nondirectory file))
+                      (file-dir (file-name-directory file))
+                      (entry-text
+                       (if welcome-dashboard-show-file-path
+                           (format "%s %s%s"
+                                   (welcome-dashboard--file-icon file)
+                                   (propertize (welcome-dashboard--truncate-path-in-middle
+                                                file-dir
+                                                welcome-dashboard-path-max-length)
+                                               'face 'welcome-dashboard-path-face)
+                                   (propertize file-name
+                                               'face 'welcome-dashboard-filename-face))
+                         (format "%s %s"
+                                 (welcome-dashboard--file-icon file)
+                                 (propertize file-name
+                                             'face 'welcome-dashboard-filename-face)))))
+                 (propertize entry-text 'path file))
+               welcome-dashboard--formatted-file-cache)))
 
 (defun welcome-dashboard--format-project (project)
-  "Format a PROJECT entry for the dashboard, with `path` property."
-  (let* ((project-name (file-name-nondirectory (directory-file-name project)))
-         (project-line (format "%s %s"
-                               (if welcome-dashboard-use-nerd-icons
-                                   (nerd-icons-octicon "nf-oct-repo_forked")
-                                 (all-the-icons-octicon "nf-oct-repo_forked"))
-                               (propertize project-name
-                                           'face 'welcome-dashboard-project-face))))
-    (propertize project-line 'path project)))
+  "Format a PROJECT entry for the dashboard."
+  (or (gethash project welcome-dashboard--formatted-project-cache)
+      (puthash project
+               (let* ((project-name (file-name-nondirectory (directory-file-name project)))
+                      (project-line (format "%s %s"
+                                           (if welcome-dashboard-use-nerd-icons
+                                               (progn
+                                                 (require 'nerd-icons)
+                                                 (nerd-icons-octicon "nf-oct-repo_forked"))
+                                             (progn
+                                               (require 'all-the-icons)
+                                               (all-the-icons-octicon "nf-oct-repo_forked")))
+                                           (propertize project-name 'face 'welcome-dashboard-project-face))))
+                 project-line)
+               welcome-dashboard--formatted-project-cache)))
 
 (defun welcome-dashboard--insert-recent-projects-and-shortcuts ()
   "Insert the recent projects in the welcome-dashboard buffer."
@@ -543,11 +571,15 @@ And adding an ellipsis."
 (defun welcome-dashboard--todo-icon ()
   "Todo icon."
   (if welcome-dashboard-use-nerd-icons
-      (propertize (nerd-icons-octicon "nf-oct-alert")
-                  'display '(raise 0))
-    (propertize (all-the-icons-octicon "alert")
-                'face `(:height 1.0)
-                'display '(raise 0))))
+      (progn
+        (require 'nerd-icons)
+        (propertize (nerd-icons-octicon "nf-oct-alert")
+                    'display '(raise 0)))
+    (progn
+      (require 'all-the-icons)
+      (propertize (all-the-icons-octicon "alert")
+                  'face `(:height 1.0)
+                  'display '(raise 0)))))
 
 
 (defun welcome-dashboard--create-title (first second)
@@ -586,34 +618,35 @@ And adding an ellipsis."
 (defun welcome-dashboard--fetch-weather-data (&optional initial)
   "Fetch weather data for the welcome dashboard.
 If INITIAL is non-nil, perform an initial fetch."
-
-  (let ((url-request-method "GET")
-        (url-request-extra-headers '(("Content-Type" . "application/json")))
-        (url (format "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current_weather=true"
-                    welcome-dashboard-latitude welcome-dashboard-longitude)))
-    (url-retrieve url
-                  (lambda (_)
-                    (goto-char (point-min))
-                    (re-search-forward "^$")
-                    (let* ((json-data (buffer-substring-no-properties (point) (point-max)))
-                           (json-obj (json-read-from-string json-data))
-                           (current-weather (cdr (assoc 'current_weather json-obj)))
-                           (temp (cdr (assoc 'temperature current-weather)))
-                           (weather-code (cdr (assoc 'weathercode current-weather)))
-                           (weather-icon (welcome-dashboard--weather-icon-from-code weather-code)))
-                      (setq welcome-dashboard-weathericon weather-icon)
-                      (if welcome-dashboard-use-fahrenheit
-                          (setq welcome-dashboard-temperature (format "%.1f" (+ (* temp 1.8) 32)))
-                        (setq welcome-dashboard-temperature (format "%.1f" temp)))
-                      (setq welcome-dashboard-weatherdescription
-                            (format "%s" (welcome-dashboard--weather-code-to-string weather-code)))
-                      ;; Only set up the recurring timer after initial fetch
-                      (when initial
-                        (run-with-timer 900 900 #'welcome-dashboard--fetch-weather-data))
-                      (when (welcome-dashboard--isActive)
-                        (welcome-dashboard--refresh-screen))))
-                  nil
-                  t)))
+  ;; Only fetch if we have coordinates
+  (when (welcome-dashboard--show-weather-info)
+    (let ((url-request-method "GET")
+          (url-request-extra-headers '(("Content-Type" . "application/json")))
+          (url (format "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current_weather=true"
+                      welcome-dashboard-latitude welcome-dashboard-longitude)))
+      (url-retrieve url
+                    (lambda (_)
+                      (goto-char (point-min))
+                      (re-search-forward "^$")
+                      (let* ((json-data (buffer-substring-no-properties (point) (point-max)))
+                             (json-obj (json-read-from-string json-data))
+                             (current-weather (cdr (assoc 'current_weather json-obj)))
+                             (temp (cdr (assoc 'temperature current-weather)))
+                             (weather-code (cdr (assoc 'weathercode current-weather)))
+                             (weather-icon (welcome-dashboard--weather-icon-from-code weather-code)))
+                        (setq welcome-dashboard-weathericon weather-icon)
+                        (if welcome-dashboard-use-fahrenheit
+                            (setq welcome-dashboard-temperature (format "%.1f" (+ (* temp 1.8) 32)))
+                          (setq welcome-dashboard-temperature (format "%.1f" temp)))
+                        (setq welcome-dashboard-weatherdescription
+                              (format "%s" (welcome-dashboard--weather-code-to-string weather-code)))
+                        ;; Only set up the recurring timer after initial fetch
+                        (when initial
+                          (run-with-timer 900 900 #'welcome-dashboard--fetch-weather-data))
+                        (when (welcome-dashboard--isActive)
+                          (welcome-dashboard--refresh-screen))))
+                    nil
+                    t))))
 
 
 (defun welcome-dashboard-create-welcome-hook ()
@@ -622,10 +655,11 @@ If INITIAL is non-nil, perform an initial fetch."
     (remove-hook 'switch-to-buffer #'welcome-dashboard--redisplay-buffer-on-resize)
     (add-hook 'window-configuration-change-hook #'welcome-dashboard--redisplay-buffer-on-resize)
     (add-hook 'emacs-startup-hook (lambda ()
+                                   ;; Show dashboard immediately
                                    (welcome-dashboard--refresh-screen)
-                                   (run-with-idle-timer 0.1 nil #'welcome-dashboard--fetch-todos t)
-                                   (when (welcome-dashboard--show-weather-info)
-                                     (run-with-idle-timer 0.1 nil #'welcome-dashboard--fetch-weather-data t))))))
+                                   ;; Defer loading of additional data
+                                   (run-with-idle-timer 1.0 nil #'welcome-dashboard--fetch-todos t)
+                                   (run-with-idle-timer 2.0 nil #'welcome-dashboard--fetch-weather-data t)))))
 
 (defun welcome-dashboard--truncate-text-right (text)
   "Truncate TEXT at the right to a maximum of 100 characters."
@@ -636,11 +670,15 @@ If INITIAL is non-nil, perform an initial fetch."
 (defun welcome-dashboard--clock-icon ()
   "Get the clock icon."
   (if welcome-dashboard-use-nerd-icons
-      (propertize (nerd-icons-octicon "nf-oct-clock")
-                  'display '(raise 0))
-    (propertize (all-the-icons-octicon "clock")
-                'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
-                'display '(raise 0))))
+      (progn
+        (require 'nerd-icons)
+        (propertize (nerd-icons-octicon "nf-oct-clock")
+                    'display '(raise 0)))
+    (progn
+      (require 'all-the-icons)
+      (propertize (all-the-icons-octicon "clock")
+                  'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
+                  'display '(raise 0)))))
 
 
 (defun welcome-dashboard--package-info ()
@@ -664,11 +702,15 @@ If INITIAL is non-nil, perform an initial fetch."
 (defun welcome-dashboard--package-icon ()
   "Get the package icon."
   (if welcome-dashboard-use-nerd-icons
-      (propertize (nerd-icons-codicon "nf-cod-package")
-                  'display '(raise -0.1))
-    (propertize (all-the-icons-octicon "package")
-                'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
-                'display '(raise -0.1))))
+      (progn
+        (require 'nerd-icons)
+        (propertize (nerd-icons-codicon "nf-cod-package")
+                    'display '(raise -0.1)))
+    (progn
+      (require 'all-the-icons)
+      (propertize (all-the-icons-octicon "package")
+                  'face `(:family ,(all-the-icons-octicon-family) :height 1.0)
+                  'display '(raise -0.1)))))
 
 
 (defun welcome-dashboard--temperature-symbol ()
@@ -718,6 +760,7 @@ If INITIAL is non-nil, perform an initial fetch."
 (cl-defun welcome-dashboard--async-command-to-string (&key command &key callback)
   "Async shell command to JSON run async (as COMMAND)
 and parse it json and call (as CALLBACK)."
+  (require 'async)
   (async-start
    `(lambda ()
       (shell-command-to-string ,command))
@@ -728,6 +771,7 @@ and parse it json and call (as CALLBACK)."
 (defun welcome-dashboard--last-root ()
   "Get the version control root directory of the most recent file."
   (when (> (length welcome-dashboard-recentfiles) 0)
+    (require 'vc)
     (let ((file (car welcome-dashboard-recentfiles)))
       (vc-find-root file ".git"))))
 
@@ -736,6 +780,8 @@ and parse it json and call (as CALLBACK)."
   "Fetch todos.  When INITIAL is t, set up recurring updates."
   (when (> welcome-dashboard-max-number-of-todos 0)
     (when (and (executable-find "rg") (welcome-dashboard--last-root))
+      (require 'async)
+      (require 'vc)
       (let* ((root (welcome-dashboard--last-root))
              (projectname (file-name-nondirectory (directory-file-name root)))
              (command (format "rg -e \"(TODO|FIX|FIXME|PERF|HACK|NOTE):\s+\" --color=never --no-heading --with-filename --line-number --column --sort path %s" root))
@@ -776,10 +822,19 @@ and parse it json and call (as CALLBACK)."
   "Show the welcome-dashboard screen."
   (with-current-buffer (get-buffer-create welcome-dashboard-buffer)
     (let* ((buffer-read-only)
-           (image (create-image welcome-dashboard-image-file 'png nil :width welcome-dashboard-image-width :height welcome-dashboard-image-height))
-           (size (image-size image))
-           (width (car size))
-           (left-margin (max welcome-dashboard-min-left-padding (floor (/ (- (window-width) width) 2)))))
+           (left-margin welcome-dashboard-min-left-padding))
+      
+      ;; Only create image if file exists and is not empty
+      (when (and (not (string-empty-p welcome-dashboard-image-file))
+                 (file-exists-p welcome-dashboard-image-file))
+        (let* ((image (create-image welcome-dashboard-image-file 'png nil 
+                                   :width welcome-dashboard-image-width 
+                                   :height welcome-dashboard-image-height))
+               (size (image-size image))
+               (width (car size)))
+          (setq left-margin (max welcome-dashboard-min-left-padding 
+                                (floor (/ (- (window-width) width) 2))))))
+      
       (erase-buffer)
       (goto-char (point-min))
       (let ((inhibit-read-only t))
@@ -795,8 +850,14 @@ and parse it json and call (as CALLBACK)."
         (insert "\n")
         (welcome-dashboard--insert-centered (propertize (format-time-string "%A, %B %d %R") 'face 'welcome-dashboard-time-face))
         (insert "\n\n")
-        (insert (make-string left-margin ?\ ))
-        (insert-image image)
+        
+        ;; Only insert image if file exists and is not empty
+        (when (and (not (string-empty-p welcome-dashboard-image-file))
+                   (file-exists-p welcome-dashboard-image-file))
+          (insert (make-string left-margin ?\ ))
+          (insert-image (create-image welcome-dashboard-image-file 'png nil 
+                                     :width welcome-dashboard-image-width 
+                                     :height welcome-dashboard-image-height)))
 
         (welcome-dashboard-mode)
         (goto-char (point-min))
@@ -846,8 +907,9 @@ SHORTCUT-FACE is the face for the keyboard shortcuts."
                             (propertize (format "[%s%d]" shortcut-modifier (1+ i))
                                        'face shortcut-face)))
                ;; Calculate padding between item and shortcut
-               (padding-length (- (+ welcome-dashboard--max-length welcome-dashboard-shortcut-spacing)
-                              (length formatted-item))))
+               (padding-length (max 0 ; Ensure padding is never negative
+                                    (- (+ welcome-dashboard--max-length welcome-dashboard-shortcut-spacing)
+                                       (length formatted-item)))))
           ;; Insert item, padding, and shortcut
           (insert formatted-item)
           (when shortcut-text
