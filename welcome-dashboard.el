@@ -16,7 +16,6 @@
 
 ;;; Code:
 
-(require 'json)
 (require 'recentf)
 (require 'url)
 
@@ -629,10 +628,10 @@ If INITIAL is non-nil, perform an initial fetch."
                       (goto-char (point-min))
                       (re-search-forward "^$")
                       (let* ((json-data (buffer-substring-no-properties (point) (point-max)))
-                             (json-obj (json-read-from-string json-data))
-                             (current-weather (cdr (assoc 'current_weather json-obj)))
-                             (temp (cdr (assoc 'temperature current-weather)))
-                             (weather-code (cdr (assoc 'weathercode current-weather)))
+                             (json-obj (json-parse-string json-data :object-type 'alist))
+                             (current-weather (alist-get 'current_weather json-obj))
+                             (temp (alist-get 'temperature current-weather))
+                             (weather-code (alist-get 'weathercode current-weather))
                              (weather-icon (welcome-dashboard--weather-icon-from-code weather-code)))
                         (setq welcome-dashboard-weathericon weather-icon)
                         (if welcome-dashboard-use-fahrenheit
