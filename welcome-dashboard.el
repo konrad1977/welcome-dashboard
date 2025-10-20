@@ -6,7 +6,7 @@
 ;; Maintainer: Mikael Konradsson <mikael.konradsson@outlook.com>
 ;; Created: 2023
 ;; URL: https://github.com/konrad1977/welcome-dashboard
-;; Package-Version: 0.4
+;; Package-Version: 0.5
 ;; Package-Requires: ((emacs "27.1") (all-the-icons "5.0.0") (async "1.9.7") (nerd-icons "0.0.1"))
 
 ;;; Commentary:
@@ -655,9 +655,12 @@ If INITIAL is non-nil, perform an initial fetch."
     (add-hook 'emacs-startup-hook (lambda ()
                                    ;; Show dashboard immediately
                                    (welcome-dashboard--refresh-screen)
-                                   ;; Defer loading of additional data
-                                   (run-with-idle-timer 1.0 nil #'welcome-dashboard--fetch-todos t)
-                                   (run-with-idle-timer 2.0 nil #'welcome-dashboard--fetch-weather-data t)))))
+                                   ;; Defer loading of additional data - only weather, no TODOs
+                                   (run-with-idle-timer 2.0 nil #'welcome-dashboard--fetch-weather-data t)
+                                   ;; Update time every minute when dashboard is active
+                                   (run-with-timer 60 60 (lambda () 
+                                                           (when (welcome-dashboard--isActive)
+                                                             (welcome-dashboard--refresh-screen))))))))
 
 (defun welcome-dashboard--truncate-text-right (text)
   "Truncate TEXT at the right to a maximum of 100 characters."
@@ -771,7 +774,11 @@ and parse it json and call (as CALLBACK)."
   (when (> (length welcome-dashboard-recentfiles) 0)
     (require 'vc)
     (let ((file (car welcome-dashboard-recentfiles)))
-      (vc-find-root file ".git"))))
+      (when (and file (file-exists-p file))
+        (let ((root (vc-find-root file ".git")))
+          ;; Skip .emacs.d directory entirely
+          (when (and root (not (string-match-p "\\.emacs\\.d" root)))
+            root))))))
 
 
 (defun welcome-dashboard--fetch-todos (&optional initial)
@@ -791,9 +798,9 @@ and parse it json and call (as CALLBACK)."
                      (setq welcome-dashboard-todos
                            (seq-take (welcome-dashboard--parse-todo-result result)
                                    welcome-dashboard-max-number-of-todos))
-                     ;; Use the captured is-initial value
-                     (when ,is-initial
-                       (run-with-timer 300 300 #'welcome-dashboard--fetch-todos))
+                     ;; Don't set up recurring timer - only run once
+                     ;; (when ,is-initial
+                     ;;   (run-with-timer 300 300 #'welcome-dashboard--fetch-todos))
                      (when (welcome-dashboard--isActive)
                        (welcome-dashboard--refresh-screen))))))))
 
