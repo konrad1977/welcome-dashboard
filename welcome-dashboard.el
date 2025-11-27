@@ -812,8 +812,8 @@ and parse it json and call (as CALLBACK)."
      (length package-activated-list))
     ((boundp 'straight--profile-cache)
      (hash-table-count straight--profile-cache))
-    ((boundp 'elpaca--queued)
-     (length elpaca--queued))
+    ((boundp 'elpaca-installer-version)
+     (length (elpaca--queued)))
     (t 0)))
 
 
